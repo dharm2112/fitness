@@ -2,6 +2,8 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import time
+import argparse
+import logging
 
 # Use modules for calculation, pose extraction, visibility
 from modules.angle_calculator import calculate_angle
@@ -107,150 +109,176 @@ def draw_side_panel(frame, text_lines, warnings, progress_factor):
 
     return frame
 
+# CLI and logging
+parser = argparse.ArgumentParser(description="Fitness counter (squat + angles)")
+parser.add_argument("--camera", type=int, default=0, help="Camera device index")
+parser.add_argument("--width", type=int, default=1280, help="Capture width")
+parser.add_argument("--height", type=int, default=720, help="Capture height")
+parser.add_argument("--proc-scale", type=float, default=1.0, help="Scale factor for pose processing (<=1.0). Use 0.5 to process at half resolution for speed")
+parser.add_argument("--min-detect-confidence", type=float, default=0.5)
+parser.add_argument("--min-track-confidence", type=float, default=0.5)
+parser.add_argument("--buffersize", type=int, default=1)
+args = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("fitness")
+
 mp_pose = mp.solutions.pose
 mp_draw = mp.solutions.drawing_utils
 
-pose = mp_pose.Pose()
+# Create pose with tuned confidences
+pose = mp_pose.Pose(min_detection_confidence=args.min_detect_confidence, min_tracking_confidence=args.min_track_confidence)
 
-cap = cv2.VideoCapture(0)
+# Open camera and validate
+cap = cv2.VideoCapture(args.camera)
+if not cap.isOpened():
+    log.error("Unable to open camera index %s", args.camera)
+    raise RuntimeError(f"Unable to open camera index {args.camera}")
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+try:
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, args.buffersize)
+except Exception:
+    # Some backends ignore this
+    pass
+
 cv2.namedWindow("Squat Counter", cv2.WINDOW_NORMAL)
 
 counter = 0
 stage = "STANDING"
-
 last_count_time = 0
 cooldown = 0.5
-
 previous_time = 0
-current_time = 0
 fps = 0
 
 smoother = AngleSmoother(window_size=5)
 machine = SquatStateMachine()
 
-# Main loop
+# Main loop with robust handling and optional downscale for processing
+try:
+    while True:
+        success, frame = cap.read()
+        if not success or frame is None:
+            # camera may be warming up
+            time.sleep(0.01)
+            continue
 
-while True:
+        # optionally downscale for faster processing
+        proc_frame = frame
+        scale = float(args.proc_scale) if args.proc_scale > 0 else 1.0
+        if scale < 1.0:
+            proc_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
 
-    success, frame = cap.read()
+        rgb_frame = cv2.cvtColor(proc_frame, cv2.COLOR_BGR2RGB)
+        results = pose.process(rgb_frame)
 
-    if not success:
-        break
+        height, width, _ = frame.shape  # use original for drawing
+        confidence = 0.0
+        left_angle = None
+        right_angle = None
+        average_angle = None
+        warnings = []
 
-    rgb_frame = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2RGB
-    )
+        new_counter = counter
 
-    results = pose.process(rgb_frame)
+        if results.pose_landmarks:
+            # When downscaling, landmark coordinates are relative to proc_frame
+            landmarks = results.pose_landmarks.landmark
+            confidence = calculate_confidence(landmarks)
+            visible = check_visibility(landmarks)
 
-    height, width, _ = frame.shape
-    confidence = 0.0
-    left_angle = None
-    right_angle = None
-    average_angle = None
-    warnings = []
+            if not visible:
+                warnings.append("Body not visible")
+            else:
+                # extract_landmarks expects normalized coordinates; when proc_scale != 1.0, the landmarks are still normalized
+                (
+                    left_hip_point,
+                    left_knee_point,
+                    left_ankle_point,
+                    right_hip_point,
+                    right_knee_point,
+                    right_ankle_point,
+                ) = extract_landmarks(landmarks)
 
-    if results.pose_landmarks:
-        landmarks = results.pose_landmarks.landmark
-        confidence = calculate_confidence(landmarks)
+                left_angle = calculate_angle(left_hip_point, left_knee_point, left_ankle_point)
+                right_angle = calculate_angle(right_hip_point, right_knee_point, right_ankle_point)
 
-        visible = check_visibility(landmarks)
+                # safe average
+                angles = [a for a in (left_angle, right_angle) if a is not None]
+                if angles:
+                    average_angle = sum(angles) / len(angles)
+                    smoothed_angle = smoother.smooth(average_angle)
+                    # update state machine only if numeric
+                    try:
+                        new_counter, stage = machine.update(smoothed_angle)
+                    except Exception:
+                        log.debug("State machine update failed with smoothed_angle=%s", smoothed_angle)
+                else:
+                    average_angle = None
 
-        if not visible:
-            warnings.append("Body not visible")
+                # counting with cooldown
+                current_time = time.time()
+                if new_counter > counter and current_time - last_count_time > cooldown:
+                    counter = new_counter
+                    last_count_time = current_time
+
+                # draw angle at left knee if available
+                if left_knee_point is not None and average_angle is not None:
+                    x = int(left_knee_point[0] * width)
+                    y = int(left_knee_point[1] * height)
+                    cv2.putText(frame, str(int(average_angle)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
+                torso_distance = abs(right_hip_point[0] - left_hip_point[0]) * width
+                if torso_distance < width * 0.22:
+                    warnings.append("Move farther from the camera")
+
+                # draw landmarks on original frame
+                mp_draw.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+            if confidence <= CONFIDENCE_THRESHOLDS["medium"]:
+                warnings.append("Low confidence detected")
         else:
-            (
-                left_hip_point,
-                left_knee_point,
-                left_ankle_point,
-                right_hip_point,
-                right_knee_point,
-                right_ankle_point,
-            ) = extract_landmarks(landmarks)
+            warnings.append("No pose detected")
 
-            left_angle = calculate_angle(
-                left_hip_point,
-                left_knee_point,
-                left_ankle_point,
-            )
+        confidence_color = get_confidence_color(confidence)
+        state_color = get_state_color(stage)
+        display_state = stage if stage in ("STANDING", "ERROR") else stage
 
-            right_angle = calculate_angle(
-                right_hip_point,
-                right_knee_point,
-                right_ankle_point,
-            )
+        current_time = time.time()
+        time_difference = current_time - previous_time if previous_time else 0
+        if time_difference > 0:
+            fps = 1 / time_difference
+        previous_time = current_time
 
-            average_angle = (left_angle + right_angle) / 2
-            smoothed_angle = smoother.smooth(average_angle)
+        text_lines = [
+            ("Squat count", counter, (0, 255, 0)),
+            ("Current state", display_state, state_color),
+            ("Left angle", int(left_angle) if left_angle is not None else "N/A", (255, 255, 255)),
+            ("Right angle", int(right_angle) if right_angle is not None else "N/A", (255, 255, 255)),
+            ("Average angle", int(average_angle) if average_angle is not None else "N/A", (255, 255, 255)),
+            ("FPS", int(fps), (255, 255, 255)),
+            ("Confidence", f"{confidence:.2f}", confidence_color),
+        ]
 
-            new_counter, stage = machine.update(smoothed_angle)
+        progress_factor = calculate_depth_progress(average_angle)
+        frame = draw_side_panel(frame, text_lines, warnings, progress_factor)
 
-            current_time = time.time()
-            if new_counter > counter and current_time - last_count_time > cooldown:
-                counter = new_counter
-                last_count_time = current_time
+        cv2.imshow("Squat Counter", frame)
 
-            x = int(left_knee_point[0] * width)
-            y = int(left_knee_point[1] * height)
-            cv2.putText(
-                frame,
-                str(int(average_angle)),
-                (x, y),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (255, 255, 255),
-                2,
-                cv2.LINE_AA,
-            )
-
-            torso_distance = abs(right_hip_point[0] - left_hip_point[0]) * width
-            if torso_distance < width * 0.22:
-                warnings.append("Move farther from the camera")
-
-            mp_draw.draw_landmarks(
-                frame,
-                results.pose_landmarks,
-                mp_pose.POSE_CONNECTIONS,
-            )
-
-        if confidence <= CONFIDENCE_THRESHOLDS["medium"]:
-            warnings.append("Low confidence detected")
-
-    else:
-        warnings.append("No pose detected")
-
-    confidence_color = get_confidence_color(confidence)
-    state_color = get_state_color(stage)
-    display_state = stage if stage in ("STANDING", "ERROR") else "SQUAT"
-
-    current_time = time.time()
-    time_difference = current_time - previous_time
-    if time_difference > 0:
-        fps = 1 / time_difference
-    previous_time = current_time
-
-    text_lines = [
-        ("Squat count", counter, (0, 255, 0)),
-        ("Current state", display_state, state_color),
-        ("Left angle", int(left_angle) if left_angle is not None else "N/A", (255, 255, 255)),
-        ("Right angle", int(right_angle) if right_angle is not None else "N/A", (255, 255, 255)),
-        ("Average angle", int(average_angle) if average_angle is not None else "N/A", (255, 255, 255)),
-        ("FPS", int(fps), (255, 255, 255)),
-        ("Confidence", f"{confidence:.2f}", confidence_color),
-    ]
-
-    progress_factor = calculate_depth_progress(average_angle)
-    frame = draw_side_panel(frame, text_lines, warnings, progress_factor)
-
-    cv2.imshow(
-        "Squat Counter",
-        frame
-    )
-
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-
-cap.release()
-cv2.destroyAllWindows()
+        # exit keys
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+except KeyboardInterrupt:
+    log.info("Interrupted by user")
+finally:
+    try:
+        if cap is not None:
+            cap.release()
+    except Exception:
+        log.exception("Failed to release camera")
+    try:
+        if pose is not None:
+            pose.close()
+    except Exception:
+        log.exception("Failed to close MediaPipe pose")
+    cv2.destroyAllWindows()

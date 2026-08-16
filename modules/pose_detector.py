@@ -33,6 +33,41 @@ def extract_landmarks(landmarks):
         landmarks[RIGHT_ANKLE].y,
     ]
 
+    #left arm
+
+    left_shoulder = [
+        landmarks[LEFT_SHOULDER].x,
+        landmarks[LEFT_SHOULDER].y,
+    ]
+
+    left_elbow = [
+        landmarks[LEFT_ELBOW].x,
+        landmarks[LEFT_ELBOW].y,
+    ]
+
+    left_wrist = [
+        landmarks[LEFT_WRIST].x,
+        landmarks[LEFT_WRIST].y,
+    ]
+
+    #right arm
+    right_shoulder = [
+        landmarks[RIGHT_SHOULDER].x,
+        landmarks[RIGHT_SHOULDER].y,
+    ]
+
+    right_elbow = [
+        landmarks[RIGHT_ELBOW].x,
+        landmarks[RIGHT_ELBOW].y,
+    ]
+
+    right_wrist = [
+        landmarks[RIGHT_WRIST].x,
+        landmarks[RIGHT_WRIST].y,
+    ]
+
+
+
     return (
         left_hip,
         left_knee,
@@ -40,4 +75,10 @@ def extract_landmarks(landmarks):
         right_hip,
         right_knee,
         right_ankle,
+        left_shoulder,
+        left_elbow,
+        left_wrist,
+        right_shoulder,
+        right_elbow,
+        right_wrist,
     )
