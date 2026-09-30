@@ -1,5 +1,10 @@
-def calculate_confidence(landmarks):
+﻿def calculate_confidence(landmarks):
+    """Compute average visibility for important lower-body landmarks.
 
+    Returns a tuple (mean_confidence, visibility_values) where visibility_values is the
+    list of raw visibility scores for diagnostics. If the values cannot be computed,
+    returns (None, []).
+    """
     important_points = [
         23,  # left hip
         25,  # left knee
@@ -11,14 +16,15 @@ def calculate_confidence(landmarks):
 
     visibility_values = []
 
-    for point in important_points:
-        visibility_values.append(
-            landmarks[point].visibility
-        )
+    try:
+        for point in important_points:
+            v = getattr(landmarks[point], 'visibility', None)
+            if v is None:
+                # cannot compute reliable confidence
+                return None, []
+            visibility_values.append(float(v))
 
-    confidence = (
-        sum(visibility_values)
-        / len(visibility_values)
-    )
-
-    return confidence
+        confidence = sum(visibility_values) / len(visibility_values)
+        return float(confidence), visibility_values
+    except Exception:
+        return None, []

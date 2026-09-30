@@ -2,71 +2,36 @@ from utils.constants import *
 
 
 def extract_landmarks(landmarks):
+    """Safely extract normalized landmark (x,y) for required keypoints.
+    Returns a tuple of points or None for missing points.
+    """
 
-    left_hip = [
-        landmarks[LEFT_HIP].x,
-        landmarks[LEFT_HIP].y,
-    ]
+    def _get_point(landmarks, idx):
+        try:
+            lm = landmarks[idx]
+            x = getattr(lm, 'x', None)
+            y = getattr(lm, 'y', None)
+            if x is None or y is None:
+                return None
+            return [float(x), float(y)]
+        except Exception:
+            return None
 
-    left_knee = [
-        landmarks[LEFT_KNEE].x,
-        landmarks[LEFT_KNEE].y,
-    ]
+    left_hip = _get_point(landmarks, LEFT_HIP)
+    left_knee = _get_point(landmarks, LEFT_KNEE)
+    left_ankle = _get_point(landmarks, LEFT_ANKLE)
 
-    left_ankle = [
-        landmarks[LEFT_ANKLE].x,
-        landmarks[LEFT_ANKLE].y,
-    ]
+    right_hip = _get_point(landmarks, RIGHT_HIP)
+    right_knee = _get_point(landmarks, RIGHT_KNEE)
+    right_ankle = _get_point(landmarks, RIGHT_ANKLE)
 
-    right_hip = [
-        landmarks[RIGHT_HIP].x,
-        landmarks[RIGHT_HIP].y,
-    ]
+    left_shoulder = _get_point(landmarks, LEFT_SHOULDER)
+    left_elbow = _get_point(landmarks, LEFT_ELBOW)
+    left_wrist = _get_point(landmarks, LEFT_WRIST)
 
-    right_knee = [
-        landmarks[RIGHT_KNEE].x,
-        landmarks[RIGHT_KNEE].y,
-    ]
-
-    right_ankle = [
-        landmarks[RIGHT_ANKLE].x,
-        landmarks[RIGHT_ANKLE].y,
-    ]
-
-    #left arm
-
-    left_shoulder = [
-        landmarks[LEFT_SHOULDER].x,
-        landmarks[LEFT_SHOULDER].y,
-    ]
-
-    left_elbow = [
-        landmarks[LEFT_ELBOW].x,
-        landmarks[LEFT_ELBOW].y,
-    ]
-
-    left_wrist = [
-        landmarks[LEFT_WRIST].x,
-        landmarks[LEFT_WRIST].y,
-    ]
-
-    #right arm
-    right_shoulder = [
-        landmarks[RIGHT_SHOULDER].x,
-        landmarks[RIGHT_SHOULDER].y,
-    ]
-
-    right_elbow = [
-        landmarks[RIGHT_ELBOW].x,
-        landmarks[RIGHT_ELBOW].y,
-    ]
-
-    right_wrist = [
-        landmarks[RIGHT_WRIST].x,
-        landmarks[RIGHT_WRIST].y,
-    ]
-
-
+    right_shoulder = _get_point(landmarks, RIGHT_SHOULDER)
+    right_elbow = _get_point(landmarks, RIGHT_ELBOW)
+    right_wrist = _get_point(landmarks, RIGHT_WRIST)
 
     return (
         left_hip,
