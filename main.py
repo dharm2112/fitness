@@ -5,6 +5,9 @@ import time
 import argparse
 import logging
 import winsound
+import threading
+import urllib.request
+import json
 
 # Use modules for calculation, pose extraction, visibility
 from modules.angle_calculator import calculate_angle
@@ -12,11 +15,11 @@ from modules.pose_detector import extract_landmarks
 from modules.visibility_checker import check_visibility
 from modules.confidence_score import calculate_confidence
 from modules.smoother import AngleSmoother
-from modules.state_machine import SquatStateMachine
+from modules.state_machine import SquatStateMachine, SquatResult
 
 # MediaPipe setup
 
-from modules.ui import get_state_color, get_confidence_color, calculate_depth_progress, draw_side_panel
+from modules.ui import get_state_color, get_confidence_color, calculate_depth_progress, draw_side_panel, CONFIDENCE_THRESHOLDS
 
 # CLI and logging
 parser = argparse.ArgumentParser(description="Fitness counter (squat + angles)")
@@ -102,6 +105,47 @@ last_visibility_values = []
 smoother = AngleSmoother(window_size=5)
 machine = SquatStateMachine()
 
+# API Client State Tracker
+last_api_state = None
+last_api_reps = None
+current_settings = {"target_reps": 10, "active_tune": "alarm.wav", "is_active": False}
+
+def poll_settings():
+    while True:
+        try:
+            req = urllib.request.Request("http://localhost:8080/alarm/settings")
+            with urllib.request.urlopen(req, timeout=1.0) as response:
+                data = json.loads(response.read().decode())
+                global current_settings
+                current_settings = data
+        except Exception:
+            pass
+        time.sleep(2.0)
+
+threading.Thread(target=poll_settings, daemon=True).start()
+
+def send_result_async(res: SquatResult):
+    def _send():
+        try:
+            payload = json.dumps({
+                "exercise": res.exercise,
+                "state": res.state,
+                "reps": res.reps,
+                "valid_rep": res.valid_rep,
+                "confidence": res.confidence,
+                "completed": res.completed
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                "http://localhost:8080/squat/result", 
+                data=payload, 
+                headers={'Content-Type': 'application/json'}
+            )
+            urllib.request.urlopen(req, timeout=1.0)
+        except Exception as e:
+            log.debug("Failed to send API result: %s", e)
+    
+    threading.Thread(target=_send, daemon=True).start()
+
 # Main loop with robust handling and optional downscale for processing
 try:
     while True:
@@ -131,8 +175,7 @@ try:
         right_angle = None
         average_angle = None
         warnings = []
-
-        new_counter = counter
+        result = None
 
         # frame skipping: process only every Nth frame
         frame_count = frame_count + 1
@@ -161,6 +204,7 @@ try:
                         right_hip_point,
                         right_knee_point,
                         right_ankle_point,
+                        *_,
                     ) = extract_landmarks(landmarks)
 
                     left_angle = calculate_angle(left_hip_point, left_knee_point, left_ankle_point)
@@ -178,17 +222,27 @@ try:
                         last_visibility_values = visibility_values if visibility_values else []
                         # update state machine only if numeric
                         try:
-                            new_counter, stage = machine.update(smoothed_angle)
+                            result: SquatResult = machine.update(smoothed_angle, confidence)
+                            stage = result.state
                         except Exception:
                             log.debug("State machine update failed with smoothed_angle=%s", smoothed_angle)
+                            result = None
                     else:
                         average_angle = None
+                        result = None
 
                     # counting with cooldown
                     current_time = time.time()
-                    if new_counter > counter and current_time - last_count_time > cooldown:
-                        counter = new_counter
+                    if result is not None and result.reps > counter and current_time - last_count_time > cooldown:
+                        counter = result.reps
                         last_count_time = current_time
+
+                    # Fire off an API request if state or rep changed
+                    if result is not None:
+                        if result.state != last_api_state or result.reps != last_api_reps or result.valid_rep:
+                            send_result_async(result)
+                            last_api_state = result.state
+                            last_api_reps = result.reps
 
                     # draw angle at left knee if available
                     if left_knee_point is not None and average_angle is not None:
@@ -242,16 +296,30 @@ try:
         previous_time = current_time
 
         # --- ALARM LOGIC ---
-        if not alarm_triggered and (current_time - app_start_time) > 10:
-            # Play a custom alarm tune in a continuous loop after 10 seconds
-            winsound.PlaySound("alarm.wav", winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_LOOP)
-            alarm_triggered = True
+        is_active = current_settings.get("is_active", False)
+        target_reps = current_settings.get("target_reps", 10)
+        active_tune = current_settings.get("active_tune", "alarm.wav")
+        tune_path = f"tunes/{active_tune}"
+        
+        # We start playing the alarm if the API says it's active and we haven't started yet.
+        if is_active and not alarm_playing:
+            try:
+                winsound.PlaySound(tune_path, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_LOOP)
+            except Exception:
+                pass
             alarm_playing = True
             
-        if alarm_playing and counter >= 10:
-            # Stop the alarm once 10 squats are reached
+        # Stop playing if the API says it's inactive OR if the user hits the target reps.
+        if alarm_playing and (not is_active or counter >= target_reps):
             winsound.PlaySound(None, winsound.SND_PURGE)
             alarm_playing = False
+            
+            if counter >= target_reps:
+                # Also auto-update the API so the phone knows we finished
+                current_settings["is_active"] = False
+                cv2.waitKey(2000)
+                log.info("%d squats completed! Shutting down.", target_reps)
+                break
 
         text_lines = [
             ("Squat count", counter, (0, 255, 0)),

@@ -1,0 +1,33 @@
+$ErrorActionPreference = 'Stop'
+mkdir -Force stitch_screens | Out-Null
+cd stitch_screens
+
+Write-Host "Downloading Screen 1..."
+curl.exe -L -o "1_landing.html" "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzliNDc2OWI1MDcwZDRhMzg5YjlkMGIwMjNjNzc2OWYyEgsSBxCE4_nrkRoYAZIBJAoKcHJvamVjdF9pZBIWQhQxMDQwNTUxMzcxMjM1NjkyMTE0NQ&filename=&opi=96797242"
+curl.exe -L -o "1_landing.png" "https://lh3.googleusercontent.com/aida/AEtjO1UayIgpZ4tMjCh6RwgsrVd0-TXCf52jPwWW8thW_KNo0l2zMi7zUmPZ_V6K7ujcflQ-P7gZ390UCj-jgJrvLMAg8OPxAAHfss3nfnyfHrN4WedQ7RC0A2DtYN2wCfY3En2ikj6d6QRWzAO4rAyZf3b-n1Gyz5vH09yi6Z_Db6XVNhSmczxXzNp_xlAZWc6QSwlDQ5vtH3bYozvFHPIqMXgLZcxvHIImmgBMUJH4cVxj0Pz-4IGVLSiBPC1V"
+
+Write-Host "Downloading Screen 2..."
+curl.exe -L -o "2_alarms.html" "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzAwMDY1ZDAwMDdjZWFjYzQwNTNiNGVkMGUzMjY5MjhjEgsSBxCE4_nrkRoYAZIBJAoKcHJvamVjdF9pZBIWQhQxMDQwNTUxMzcxMjM1NjkyMTE0NQ&filename=&opi=89354086"
+curl.exe -L -o "2_alarms.png" "https://lh3.googleusercontent.com/aida/AEtjO1UxrSnkhq-8JH1FhVLtZ6tqirsqQxzGMoHURWA3B4pxoI-frCV3hDzkpuHDVokMtfgIn7nIBFmvlS-CgJSzuTnUIjDbpmnpD332F7qXIdUURYjbbVB64iRzaDfo4QQVwDPiw-0ZLOKsyjdxlMGUrUccELTVj5BKpjLOtR1Z9BAOSUjKlbIe2YPIni7IgGlhLYbmogxmSBSpL-kNo-p9tjNLowsNNDZek5LDnviznBeC7ECIuo4S0TsuqyJc"
+
+Write-Host "Downloading Screen 3..."
+curl.exe -L -o "3_home.html" "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzAwMDY1ZDAwMDg0YTVjNDYwN2M0ZTdhN2ZiM2E0OGJhEgsSBxCE4_nrkRoYAZIBJAoKcHJvamVjdF9pZBIWQhQxMDQwNTUxMzcxMjM1NjkyMTE0NQ&filename=&opi=89354086"
+curl.exe -L -o "3_home.png" "https://lh3.googleusercontent.com/aida/AEtjO1XOWywo3OJmo3Rt3USLcXXoHC5Au8W0ayVh2yZcne0xJYTLmVtSWk-GV7ZgeslmgQVBZROJmxn9GLm2YITsDRNQx4QZiUhbDAbsjNxXfSoP9GcDAg-jiel_iPj4EviZV9xyNdRSb8Li4vWd7R6mHGxRBGPI0HIzbcWlyrkVProOuCWF4X2amTsWCa5SrhxO4s6anopqO_LCCqt8aNzSRmLXvthTh0iV7Z3fqAihZM-vBW3OghBGV39FnOQ"
+
+Write-Host "Downloading Screen 4..."
+curl.exe -L -o "4_create_alarm.html" "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzAwMDY1ZDAwMDdkNzg0M2EwODQwZDBkODI1MzM3NmJhEgsSBxCE4_nrkRoYAZIBJAoKcHJvamVjdF9pZBIWQhQxMDQwNTUxMzcxMjM1NjkyMTE0NQ&filename=&opi=89354086"
+curl.exe -L -o "4_create_alarm.png" "https://lh3.googleusercontent.com/aida/AEtjO1VveOLa1wm4yz801F196T-VKK98VP_GZ_U-G7zTsjRDEl4SrWtjX2m47YKKfMYX5kM0ZKARXvUc1_POgk68zhkJt3iqiQM8McEAdFoGJg7AtqxzemVXF7mi2HI2u3IneD36t_R40B3g16R03dKI7jwpNSLnDcTVzPOZp5UYGWDssPkUttM-xccu9D5sD76bRNQaQICQurmQEWk0wzJ2zs1vCtAsb3OqRqBN5S-tQWEFwSrvYVnLIAyf3x29"
+
+Write-Host "Downloading Screen 5..."
+curl.exe -L -o "5_challenge_complete.html" "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzAwMDY1ZDAwMDk5NGE0ODAwNzllNmU5OTUyMzEwMjBjEgsSBxCE4_nrkRoYAZIBJAoKcHJvamVjdF9pZBIWQhQxMDQwNTUxMzcxMjM1NjkyMTE0NQ&filename=&opi=89354086"
+curl.exe -L -o "5_challenge_complete.png" "https://lh3.googleusercontent.com/aida/AEtjO1UJvo35sc3JdaIvT8CHcFvmNeQ59H-pXeYt2-9TBnj2pGWd2CsIW1HwiXk9kqrNHCJZ5DAeen2zV7h2xqWndQcQR4VLFU783YtbvPR5WII3Tn6wFYNBoBZeTYz1VlSk98xmRB18oBJn7HgmC8j3-2JkBTgZ9UEfa62z6LBqf7JVrlkBP3DGt7tP1bSmdNsxrBXgVYH8FUsQhkcz2g8tNZ0rcv6YepihpQatdI6wDWaXrwxgWPFS3mCAmErp"
+
+Write-Host "Downloading Screen 6..."
+curl.exe -L -o "6_active_alarm.html" "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzAwMDY1ZDAwMGEwMzRhZWQwNzllNmU5OTUyMzEwMjBjEgsSBxCE4_nrkRoYAZIBJAoKcHJvamVjdF9pZBIWQhQxMDQwNTUxMzcxMjM1NjkyMTE0NQ&filename=&opi=89354086"
+curl.exe -L -o "6_active_alarm.png" "https://lh3.googleusercontent.com/aida/AEtjO1XEua0IQpRWtGNcLQF60hN2MWBQrtHQ-t3JxgmVi9pVAwnj_haiVAXdBfQ_ZOTSa8pqkUYL0gltUrE4lw7plGXCRgWsHpqH9dUMy6N2fL-cn8CS4cXgJp3HBmffaPlhUDSuUCnHGNWZtiftBw2UzziikbR5ZVP86ggwWtbs895ywdZO9Y8wyzfWqkg9aLzst5sA1Ccr93KmOkWcc_I4rPi3tmnX6QLeY_jArBD2Cb8H9A8g4ahjkKiTk0g"
+
+Write-Host "Downloading Screen 7..."
+curl.exe -L -o "7_progress.html" "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzAwMDY1ZDAwMGExMTc4MTYwNTNiNGVkMGUzMjY5MjhjEgsSBxCE4_nrkRoYAZIBJAoKcHJvamVjdF9pZBIWQhQxMDQwNTUxMzcxMjM1NjkyMTE0NQ&filename=&opi=89354086"
+curl.exe -L -o "7_progress.png" "https://lh3.googleusercontent.com/aida/AEtjO1UQTZvBCn4blUETBFdRSF2k9kPfZt2WdiW9FHiYQj5OGTLO4xnjZR97NWRd8NJHUbffrIFHLh-0GpQsLvSwk1rKpxs4vTWJAbbCD9uV1MBmzJeoIWgMAfMArAHgZPJz-Z48Ueu6R8nr5lRbJpDNnWtYbcFpaR1ezMZFC1kSfUOybmml6KGXw8mra1rgxH-mkMfx8t09z9zXIoCYnOebOy5jndoZ0lYZ4ty_I56F7wgNoj2z7fyyAmnDiTH0"
+
+Write-Host "Done downloading all screens."

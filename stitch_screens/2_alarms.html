@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "surface-bright": "#fff8f6", "outline": "#8d7168", "secondary-fixed-dim": "#4fdbcc", "tertiary-fixed-dim": "#59d5fb", "surface-container-high": "#fde3db", "surface-variant": "#f7ddd5", "on-tertiary-fixed-variant": "#004e60", "primary-fixed-dim": "#ffb59d", "on-primary-container": "#5f1900", "surface-warm": "#FFF9F5", "on-primary-fixed": "#390c00", "surface-container-low": "#fff1ed", "on-error": "#ffffff", "primary": "#ab3500", "on-surface-variant": "#594139", "surface-container": "#ffe9e3", "inverse-surface": "#3c2d28", "on-tertiary-container": "#003744", "error": "#ba1a1a", "accent-sun": "#FFD166", "error-container": "#ffdad6", "primary-fixed": "#ffdbd0", "on-secondary-fixed": "#00201d", "text-muted": "#6E7284", "outline-variant": "#e1bfb5", "on-surface": "#261814", "background": "#fff8f6", "secondary": "#006a62", "surface-container-highest": "#f7ddd5", "on-error-container": "#93000a", "inverse-on-surface": "#ffede8", "on-background": "#261814", "on-primary-fixed-variant": "#832600", "on-tertiary-fixed": "#001f28", "secondary-container": "#70f8e8", "on-secondary-container": "#007168", "on-tertiary": "#ffffff", "surface-dim": "#eed5cd", "tertiary": "#00677e", "on-secondary": "#ffffff", "tertiary-fixed": "#b5ebff", "surface-tint": "#ab3500", "surface-container-lowest": "#ffffff", "inverse-primary": "#ffb59d", "text-main": "#1D1E2C", "secondary-fixed": "#70f8e8", "tertiary-container": "#00a7cb", "on-secondary-fixed-variant": "#005049", "on-primary": "#ffffff", "primary-container": "#ff6b35", "surface": "#fff8f6" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-xs": "4px", "space-md": "16px", "space-sm": "8px", "gutter": "16px", "margin": "24px", "space-xl": "40px", "space-lg": "24px" }, fontFamily: { "body-sm": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"] }, fontSize: { "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-sm": ["22px", { "lineHeight": "28px", "fontWeight": "600" }], "headline-md": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "headline-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }], "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;min-height:100%;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)]"><div class="h-16 px-gutter flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center shadow-[0_8px_16px_rgba(255,107,53,0.2)]"><span class="material-symbols-outlined text-white text-[22px]">local_fire_department</span></div><h1 class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-bold">Alarms</h1></div><div class="flex items-center gap-space-sm"><a class="w-11 h-11 flex items-center justify-center" data-path="profile" href="#"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></a></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-28 px-gutter bg-surface"><div class="flex flex-col w-full gap-space-lg">
+<div class="flex items-end justify-between pt-space-xs">
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight">Alarms</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Movement-verified wake up calls</span>
+</div>
+<button class="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-container-high text-primary hover:bg-primary-fixed transition-all active:scale-95 shadow-sm" id="quick-add-btn">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider">New</span>
+</button>
+</div>
+<div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/10 via-surface-container to-secondary/10 p-4 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary-container text-white shadow-md">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">alarm_on</span>
+<span class="absolute -top-1 -right-1 flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-sun opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-accent-sun"></span>
+</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-primary uppercase tracking-wide">Next Alarm</p>
+<p class="font-headline-sm text-headline-sm text-on-surface leading-tight">Tomorrow, 07:00 AM</p>
+</div>
+</div>
+<div class="text-right">
+<span class="inline-block px-2.5 py-1 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm shadow-sm">
+          in 8h 24m
+        </span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3.5" id="alarms-list">
+<div class="relative overflow-hidden rounded-2xl bg-surface-container-lowest p-5 shadow-[0_8px_24px_rgba(255,107,53,0.06)] transition-all hover:shadow-[0_12px_28px_rgba(255,107,53,0.1)] group">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface tracking-tighter">07:00</span>
+<span class="font-label-md text-label-md text-primary font-bold">AM</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface mt-0.5">Weekday Wake Up</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Mon, Tue, Wed, Thu, Fri</span>
+</div>
+<button aria-checked="true" class="alarm-toggle relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full bg-primary-container p-1 transition-colors duration-200 ease-in-out focus:outline-none shadow-inner" role="switch">
+<span class="pointer-events-none translate-x-6 inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-primary">fitness_center</span>
+</span>
+</button>
+</div>
+<div class="mt-4 pt-3.5 flex flex-wrap items-center justify-between gap-2 bg-surface-container-low/70 -mx-5 -mb-5 px-5 py-3">
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm shadow-xs">
+<span class="material-symbols-outlined text-[16px]">accessibility_new</span>
+<span>10 Squats</span>
+<span class="flex h-1.5 w-1.5 rounded-full bg-secondary"></span>
+<span class="text-[11px] font-medium tracking-normal opacity-90">Vision AI</span>
+</div>
+<span class="font-body-sm text-body-sm text-text-muted truncate max-w-[190px]">Gentle chime • Gradual volume</span>
+</div>
+</div>
+<div class="relative overflow-hidden rounded-2xl bg-surface-container-lowest p-5 shadow-[0_8px_24px_rgba(38,24,20,0.04)] transition-all hover:shadow-[0_12px_28px_rgba(255,107,53,0.08)]">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface tracking-tighter">08:30</span>
+<span class="font-label-md text-label-md text-primary font-bold">AM</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface mt-0.5">Weekend Jumpstart</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Sat, Sun</span>
+</div>
+<button aria-checked="true" class="alarm-toggle relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full bg-primary-container p-1 transition-colors duration-200 ease-in-out focus:outline-none shadow-inner" role="switch">
+<span class="pointer-events-none translate-x-6 inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-primary">local_fire_department</span>
+</span>
+</button>
+</div>
+<div class="mt-4 pt-3.5 flex flex-wrap items-center justify-between gap-2 bg-surface-container-low/70 -mx-5 -mb-5 px-5 py-3">
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm shadow-xs">
+<span class="material-symbols-outlined text-[16px]">accessibility_new</span>
+<span>15 Squats</span>
+</div>
+<span class="font-body-sm text-body-sm text-text-muted truncate max-w-[190px]">Energetic beat • Vibrate</span>
+</div>
+</div>
+<div class="relative overflow-hidden rounded-2xl bg-surface-container-low p-5 opacity-75 transition-all">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface-variant tracking-tighter">06:15</span>
+<span class="font-label-md text-label-md text-on-surface-variant font-bold">AM</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface-variant mt-0.5">Early Morning Run</span>
+<span class="font-body-sm text-body-sm text-outline">Mon, Wed</span>
+</div>
+<button aria-checked="false" class="alarm-toggle relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full bg-surface-variant p-1 transition-colors duration-200 ease-in-out focus:outline-none" role="switch">
+<span class="pointer-events-none translate-x-0 inline-block h-6 w-6 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-outline">bedtime</span>
+</span>
+</button>
+</div>
+<div class="mt-4 pt-3.5 flex flex-wrap items-center justify-between gap-2 bg-surface-container/60 -mx-5 -mb-5 px-5 py-3">
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-variant text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">accessibility_new</span>
+<span>20 Squats</span>
+</div>
+<span class="font-body-sm text-body-sm text-outline truncate max-w-[190px]">Sunrise surge • Strict pose</span>
+</div>
+</div>
+</div>
+<div class="rounded-2xl bg-surface-warm p-4 shadow-sm flex items-start gap-3 mt-1">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed shadow-sm">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-bold">Squat Challenge Rule</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 leading-snug">
+        The alarm will chime with increasing volume until your full depth squats are verified by your phone camera. No cheat naps allowed.
+      </p>
+</div>
+</div>
+<div class="pt-2">
+<button class="w-full h-14 rounded-full bg-primary-container hover:bg-primary transition-all active:scale-[0.98] shadow-[0_10px_24px_rgba(255,107,53,0.3)] flex items-center justify-center gap-2 text-white font-label-lg text-label-lg" id="add-alarm-main">
+<span class="material-symbols-outlined text-[22px]">alarm_add</span>
+<span>Set New Alarm</span>
+</button>
+</div>
+</div>
+<script>
+  document.querySelectorAll('.alarm-toggle').forEach(toggle => {
+    toggle.addEventListener('click', () => {
+      const isChecked = toggle.getAttribute('aria-checked') === 'true';
+      const newState = !isChecked;
+      toggle.setAttribute('aria-checked', newState);
+      
+      const thumb = toggle.querySelector('span');
+      const icon = thumb.querySelector('.material-symbols-outlined');
+      const card = toggle.closest('.rounded-2xl');
+
+      if (newState) {
+        toggle.classList.remove('bg-surface-variant');
+        toggle.classList.add('bg-primary-container');
+        thumb.classList.remove('translate-x-0');
+        thumb.classList.add('translate-x-6');
+        card.classList.remove('opacity-75', 'bg-surface-container-low');
+        card.classList.add('bg-surface-container-lowest', 'shadow-[0_8px_24px_rgba(255,107,53,0.06)]');
+        if (icon) {
+          icon.textContent = 'fitness_center';
+          icon.classList.remove('text-outline');
+          icon.classList.add('text-primary');
+        }
+      } else {
+        toggle.classList.remove('bg-primary-container');
+        toggle.classList.add('bg-surface-variant');
+        thumb.classList.remove('translate-x-6');
+        thumb.classList.add('translate-x-0');
+        card.classList.remove('bg-surface-container-lowest', 'shadow-[0_8px_24px_rgba(255,107,53,0.06)]');
+        card.classList.add('opacity-75', 'bg-surface-container-low');
+        if (icon) {
+          icon.textContent = 'bedtime';
+          icon.classList.remove('text-primary');
+          icon.classList.add('text-outline');
+        }
+      }
+    });
+  });
+
+  const setupPulseEffect = (btnId) => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      btn.style.transform = 'scale(0.96)';
+      setTimeout(() => {
+        btn.style.transform = 'scale(1)';
+      }, 150);
+    });
+  };
+  setupPulseEffect('add-alarm-main');
+  setupPulseEffect('quick-add-btn');
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/85 backdrop-blur-xl shadow-[0_-4px_24px_rgba(38,24,20,0.04)]" data-active-classes="text-primary-container font-semibold"><div class="flex justify-around items-center h-20 px-space-xs"><a class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-1 text-on-surface-variant hover:text-on-surface transition-colors" data-path="home" href="#"><span class="material-symbols-outlined text-[24px]">home</span><span class="font-label-sm text-label-sm">HOME</span></a><a aria-current="page" class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-1 transition-colors text-primary-container font-semibold" data-path="alarms" href="#"><span class="material-symbols-outlined text-[24px]">alarm</span><span class="font-label-sm text-label-sm">ALARMS</span></a><a class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-1 text-on-surface-variant hover:text-on-surface transition-colors" data-path="progress" href="#"><span class="material-symbols-outlined text-[24px]">insights</span><span class="font-label-sm text-label-sm">PROGRESS</span></a><a class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-1 text-on-surface-variant hover:text-on-surface transition-colors" data-path="profile" href="#"><span class="material-symbols-outlined text-[24px]">person</span><span class="font-label-sm text-label-sm">PROFILE</span></a></div></nav></body></html>
