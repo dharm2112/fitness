@@ -6,7 +6,7 @@ import { Header } from '../components/Header';
 import { Button } from '../components/Button';
 import { useAppContext } from '../context/AppContext';
 import { colors, typography, rounded, spacing } from '../theme/theme';
-import { Alarm, DayKey } from '../types/types';
+import { Alarm, AlarmMode, DayKey } from '../types/types';
 import { scheduleAlarm, cancelAlarm } from '../services/alarmService';
 
 const ALL_DAYS: DayKey[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -15,7 +15,7 @@ const DAY_LABELS: Record<DayKey, string> = {
 };
 
 interface Props {
-  existingAlarm?: Alarm | null;   // null = create mode
+  existingAlarm?: Alarm | null;
   onSave: () => void;
   onBack: () => void;
 }
@@ -38,6 +38,7 @@ export const CreateAlarmScreen = ({ existingAlarm, onSave, onBack }: Props) => {
   const [label, setLabel] = useState<string>(existingAlarm?.label ?? '');
   const [soundEnabled, setSoundEnabled] = useState(existingAlarm?.soundEnabled ?? true);
   const [vibrationEnabled, setVibrationEnabled] = useState(existingAlarm?.vibrationEnabled ?? true);
+  const [alarmMode, setAlarmMode] = useState<AlarmMode>(existingAlarm?.alarmMode ?? 'challenge');
 
   const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
@@ -59,15 +60,14 @@ export const CreateAlarmScreen = ({ existingAlarm, onSave, onBack }: Props) => {
       enabled: true,
       soundEnabled,
       vibrationEnabled,
+      alarmMode,
     };
     if (isEdit) {
-      // Cancel the old trigger before re-scheduling
       await cancelAlarm(alarm.id);
       updateAlarm(alarm);
     } else {
       addAlarm(alarm);
     }
-    // Schedule the native OS alarm
     await scheduleAlarm(alarm);
     onSave();
   };
@@ -131,6 +131,75 @@ export const CreateAlarmScreen = ({ existingAlarm, onSave, onBack }: Props) => {
           </View>
         </View>
 
+        {/* ── Alarm Mode Selector ── */}
+        <Text style={styles.sectionTitle}>Alarm Type</Text>
+        <View style={styles.modeContainer}>
+
+          {/* Normal Mode Card */}
+          <TouchableOpacity
+            style={[styles.modeCard, alarmMode === 'normal' && styles.modeCardActive]}
+            onPress={() => setAlarmMode('normal')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.modeIconRow}>
+              <Text style={styles.modeEmoji}>😴</Text>
+              {alarmMode === 'normal' && (
+                <View style={styles.modeCheck}><Text style={styles.modeCheckText}>✓</Text></View>
+              )}
+            </View>
+            <Text style={[styles.modeTitle, alarmMode === 'normal' && styles.modeTitleActive]}>
+              Normal Alarm
+            </Text>
+            <Text style={styles.modeDesc}>
+              Snooze or stop the alarm anytime. No squats required.
+            </Text>
+            <View style={styles.modeTagRow}>
+              <View style={styles.modeTag}><Text style={styles.modeTagText}>⏰ Snooze</Text></View>
+              <View style={styles.modeTag}><Text style={styles.modeTagText}>✕ Stop</Text></View>
+            </View>
+          </TouchableOpacity>
+
+          {/* Challenge Mode Card */}
+          <TouchableOpacity
+            style={[styles.modeCard, styles.modeCardChallenge, alarmMode === 'challenge' && styles.modeCardChallengeActive]}
+            onPress={() => setAlarmMode('challenge')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.modeIconRow}>
+              <Text style={styles.modeEmoji}>💪</Text>
+              {alarmMode === 'challenge' && (
+                <View style={[styles.modeCheck, styles.modeCheckChallenge]}>
+                  <Text style={styles.modeCheckText}>✓</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.modeTitle, alarmMode === 'challenge' && styles.modeTitleChallenge]}>
+              Squat Challenge
+            </Text>
+            <Text style={styles.modeDesc}>
+              The ONLY way to stop the alarm is to complete your squats. App opens automatically.
+            </Text>
+            <View style={styles.modeTagRow}>
+              <View style={[styles.modeTag, styles.modeTagChallenge]}>
+                <Text style={[styles.modeTagText, styles.modeTagTextChallenge]}>🏋️ Must Complete</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+        </View>
+
+        {/* Challenge info box */}
+        {alarmMode === 'challenge' && (
+          <View style={styles.challengeInfo}>
+            <Text style={styles.challengeInfoIcon}>⚡</Text>
+            <Text style={styles.challengeInfoText}>
+              When the alarm fires, the app will open directly to the squat counter.
+              Complete <Text style={{ fontWeight: '800' }}>{targetReps} squats</Text> to dismiss it.
+              No snooze allowed!
+            </Text>
+          </View>
+        )}
+
         {/* ── Repeat Days ── */}
         <Text style={styles.sectionTitle}>Repeat</Text>
         <View style={styles.daysContainer}>
@@ -150,15 +219,10 @@ export const CreateAlarmScreen = ({ existingAlarm, onSave, onBack }: Props) => {
           })}
         </View>
 
-        {/* ── Challenge ── */}
-        <Text style={styles.sectionTitle}>Challenge</Text>
+        {/* ── Challenge Target ── */}
+        <Text style={styles.sectionTitle}>Squat Target</Text>
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>Exercise</Text>
-          <Text style={styles.cardValue}>Squats</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>Target Reps</Text>
+          <Text style={styles.cardLabel}>Reps to complete</Text>
           <View style={styles.repRow}>
             <TouchableOpacity onPress={() => setTargetReps(r => Math.max(1, r - 1))} style={styles.repBtn}>
               <Text style={styles.repBtnText}>−</Text>
@@ -187,6 +251,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: 120 },
 
+  // Time picker
   timePicker: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: spacing.lg, backgroundColor: colors.surfaceContainerLowest, borderRadius: rounded.xl, padding: spacing.lg, borderWidth: 1, borderColor: colors.outlineVariant },
   timeColumn: { alignItems: 'center' },
   timeSep: { fontSize: 48, fontWeight: '700', color: colors.textMain, marginHorizontal: 8 },
@@ -201,21 +266,80 @@ const styles = StyleSheet.create({
 
   sectionTitle: { ...typography.labelLg, color: colors.textMain, marginBottom: 12, marginTop: 20 },
 
+  // ── Mode selector ──────────────────────────────────────────────────────────
+  modeContainer: { flexDirection: 'row', gap: spacing.sm },
+
+  modeCard: {
+    flex: 1,
+    backgroundColor: colors.surfaceContainerLowest,
+    borderRadius: rounded.xl,
+    padding: spacing.md,
+    borderWidth: 2,
+    borderColor: colors.outlineVariant,
+  },
+  modeCardActive: {
+    borderColor: colors.secondary,
+    backgroundColor: colors.secondaryContainer + '33',
+  },
+  modeCardChallenge: {
+    // base style same but accent colour different
+  },
+  modeCardChallengeActive: {
+    borderColor: colors.primaryContainer,
+    backgroundColor: colors.primaryContainer + '18',
+  },
+
+  modeIconRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  modeEmoji: { fontSize: 28 },
+  modeCheck: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.secondary, justifyContent: 'center', alignItems: 'center' },
+  modeCheckChallenge: { backgroundColor: colors.primaryContainer },
+  modeCheckText: { fontSize: 12, color: '#fff', fontWeight: '800' },
+
+  modeTitle: { ...typography.labelLg, color: colors.textMuted, marginBottom: 6 },
+  modeTitleActive: { color: colors.secondary },
+  modeTitleChallenge: { color: colors.primaryContainer },
+
+  modeDesc: { ...typography.labelSm, color: colors.textMuted, lineHeight: 16, marginBottom: 10 },
+
+  modeTagRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  modeTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: rounded.full, backgroundColor: colors.surfaceContainerHigh },
+  modeTagText: { ...typography.labelSm, color: colors.textMuted, fontSize: 10 },
+  modeTagChallenge: { backgroundColor: colors.primaryContainer + '22' },
+  modeTagTextChallenge: { color: colors.primaryContainer },
+
+  // Challenge info box
+  challengeInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.primaryContainer + '15',
+    borderRadius: rounded.lg,
+    padding: spacing.md,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.primaryContainer + '40',
+    gap: 10,
+  },
+  challengeInfoIcon: { fontSize: 20 },
+  challengeInfoText: { ...typography.bodySm, color: colors.textMain, flex: 1, lineHeight: 18 },
+
+  // Days
   daysContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   dayCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceContainer, justifyContent: 'center', alignItems: 'center' },
   dayActive: { backgroundColor: colors.primaryContainer },
   dayText: { ...typography.labelMd, color: colors.textMuted },
   dayTextActive: { color: colors.onPrimary },
 
+  // Card
   card: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, backgroundColor: colors.surfaceContainerLowest, borderRadius: rounded.lg, borderWidth: 1, borderColor: colors.outlineVariant, marginBottom: 8 },
   cardLabel: { ...typography.bodyMd, color: colors.textMain },
-  cardValue: { ...typography.labelLg, color: colors.primaryContainer },
 
+  // Rep stepper
   repRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   repBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryContainer, justifyContent: 'center', alignItems: 'center' },
   repBtnText: { fontSize: 18, color: colors.onPrimary, fontWeight: '700' },
   repValue: { ...typography.headlineSm, color: colors.textMain, minWidth: 30, textAlign: 'center' },
 
+  // Settings row
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, backgroundColor: colors.surfaceContainerLowest, borderRadius: rounded.lg, borderWidth: 1, borderColor: colors.outlineVariant, marginBottom: 8 },
   rowLabel: { ...typography.bodyMd, color: colors.textMain },
   toggle: { width: 48, height: 26, borderRadius: 13 },

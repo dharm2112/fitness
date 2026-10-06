@@ -33,7 +33,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           AsyncStorage.getItem(ALARMS_KEY),
           AsyncStorage.getItem(CHALLENGES_KEY),
         ]);
-        if (alarmsRaw) setAlarms(JSON.parse(alarmsRaw));
+        if (alarmsRaw) {
+          // Migration: old alarms may not have alarmMode — default to 'challenge'
+          const parsed: Alarm[] = JSON.parse(alarmsRaw);
+          setAlarms(parsed.map(a => ({ alarmMode: 'challenge', ...a })));
+        }
         if (challengesRaw) setCompletedChallenges(JSON.parse(challengesRaw));
       } catch (e) {
         console.warn('[AppContext] Failed to load from storage:', e);

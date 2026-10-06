@@ -1,8 +1,11 @@
 /**
  * alarmService.ts
  * Handles scheduling and cancelling alarm notifications using notifee.
- * The alarm fires at the exact time set by the user, and the notification
- * stays active until the user completes their squat challenge.
+ *
+ * Two alarm modes:
+ *  • 'normal'    → Notification has Snooze + Stop actions.
+ *  • 'challenge' → Notification has only "Start Squats" action.
+ *                  Opening the notification auto-navigates to ActiveAlarmScreen.
  */
 
 import notifee, {
@@ -14,19 +17,25 @@ import notifee, {
 } from '@notifee/react-native';
 import { Alarm } from '../types/types';
 
-// ─── Channel ID (created once) ────────────────────────────────────────────────
-const CHANNEL_ID = 'squrts_alarm';
+// ─── Constants ────────────────────────────────────────────────────────────────
+export const CHANNEL_ID = 'squrts_alarm';
 const CHANNEL_NAME = 'Squrts Alarm';
+export const SNOOZE_MINUTES = 5;
 
-// ─── Setup: call this once at app start (e.g. in App.tsx) ────────────────────
+// Notification action IDs
+export const ACTION = {
+  STOP: 'stop',
+  SNOOZE: 'snooze',
+  START_SQUATS: 'start_squats',
+} as const;
+
+// ─── Setup: call once at app start ───────────────────────────────────────────
 export async function setupNotifee(): Promise<void> {
-  // Request permission (Android 13+)
   const settings = await notifee.requestPermission();
   if (settings.authorizationStatus < AuthorizationStatus.AUTHORIZED) {
     console.warn('[alarmService] Notification permission denied');
   }
 
-  // Create the notification channel (Android only, safe to call repeatedly)
   await notifee.createChannel({
     id: CHANNEL_ID,
     name: CHANNEL_NAME,
@@ -38,54 +47,100 @@ export async function setupNotifee(): Promise<void> {
   });
 }
 
-// ─── Schedule an alarm notification ──────────────────────────────────────────
+// ─── Schedule an alarm ────────────────────────────────────────────────────────
 export async function scheduleAlarm(alarm: Alarm): Promise<string> {
-  // Build the trigger timestamp from alarm.time + alarm.ampm
   const triggerDate = buildTriggerDate(alarm.time, alarm.ampm);
 
   const trigger: TimestampTrigger = {
     type: TriggerType.TIMESTAMP,
     timestamp: triggerDate.getTime(),
-    alarmManager: {
-      allowWhileIdle: true, // fires even in Doze mode
-    },
+    alarmManager: { allowWhileIdle: true },
   };
+
+  const isChallenge = alarm.alarmMode === 'challenge';
 
   const notificationId = await notifee.createTriggerNotification(
     {
       id: alarm.id,
-      title: '⚡ Squrts Alarm!',
-      body: `Time to do ${alarm.targetReps} squats to dismiss this alarm!`,
+      title: isChallenge ? '💪 Squrts Challenge!' : '🔔 Squrts Alarm',
+      body: isChallenge
+        ? `Wake up! Complete ${alarm.targetReps} squats to silence this alarm.`
+        : `Your alarm is ringing. Tap to open or snooze.`,
+      data: {
+        alarmId: alarm.id,
+        alarmMode: alarm.alarmMode,
+        targetReps: String(alarm.targetReps),
+      },
       android: {
         channelId: CHANNEL_ID,
         importance: AndroidImportance.HIGH,
-        fullScreenAction: {
-          id: 'default', // opens the app to ActiveAlarmScreen
-        },
-        pressAction: {
-          id: 'default',
-          launchActivity: 'default',
-        },
-        actions: [
-          {
-            title: '🏋️ Start Squats',
-            pressAction: { id: 'start', launchActivity: 'default' },
-          },
-        ],
-        ongoing: false,
+        fullScreenAction: { id: 'default' }, // wakes screen
+        pressAction: { id: 'default', launchActivity: 'default' },
+        ongoing: isChallenge, // Challenge alarm stays until completed
+        actions: isChallenge
+          ? [
+              {
+                title: '🏋️ Start Squats',
+                pressAction: { id: ACTION.START_SQUATS, launchActivity: 'default' },
+              },
+            ]
+          : [
+              {
+                title: '⏰ Snooze 5 min',
+                pressAction: { id: ACTION.SNOOZE },
+              },
+              {
+                title: '✕ Stop',
+                pressAction: { id: ACTION.STOP },
+              },
+            ],
         vibrationPattern: [300, 500, 300, 500],
       },
     },
     trigger,
   );
 
-  console.log(`[alarmService] Scheduled alarm "${alarm.id}" for ${triggerDate.toLocaleString()}`);
+  console.log(
+    `[alarmService] Scheduled ${alarm.alarmMode} alarm "${alarm.id}" → ${triggerDate.toLocaleString()}`,
+  );
   return notificationId;
+}
+
+// ─── Snooze a normal alarm ────────────────────────────────────────────────────
+export async function snoozeAlarm(alarm: Alarm): Promise<void> {
+  await notifee.cancelNotification(alarm.id);
+  const snoozeDate = new Date(Date.now() + SNOOZE_MINUTES * 60 * 1000);
+  const trigger: TimestampTrigger = {
+    type: TriggerType.TIMESTAMP,
+    timestamp: snoozeDate.getTime(),
+    alarmManager: { allowWhileIdle: true },
+  };
+  await notifee.createTriggerNotification(
+    {
+      id: `${alarm.id}_snooze`,
+      title: '🔔 Squrts Alarm (Snoozed)',
+      body: `Snoozed for ${SNOOZE_MINUTES} minutes.`,
+      data: { alarmId: alarm.id, alarmMode: 'normal', targetReps: String(alarm.targetReps) },
+      android: {
+        channelId: CHANNEL_ID,
+        importance: AndroidImportance.HIGH,
+        pressAction: { id: 'default', launchActivity: 'default' },
+        actions: [
+          { title: '⏰ Snooze again', pressAction: { id: ACTION.SNOOZE } },
+          { title: '✕ Stop', pressAction: { id: ACTION.STOP } },
+        ],
+      },
+    },
+    trigger,
+  );
+  console.log(`[alarmService] Snoozed alarm "${alarm.id}" for ${SNOOZE_MINUTES} min`);
 }
 
 // ─── Cancel a specific alarm ──────────────────────────────────────────────────
 export async function cancelAlarm(alarmId: string): Promise<void> {
   await notifee.cancelTriggerNotification(alarmId);
+  await notifee.cancelNotification(alarmId);            // also dismiss if already showing
+  await notifee.cancelNotification(`${alarmId}_snooze`); // cancel any snooze too
   console.log(`[alarmService] Cancelled alarm "${alarmId}"`);
 }
 
@@ -95,9 +150,8 @@ export async function cancelAllAlarms(): Promise<void> {
   console.log('[alarmService] Cancelled all alarms');
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 function buildTriggerDate(time: string, ampm: string): Date {
-  // time is in "HH:MM" format, ampm is "AM" or "PM"
   const [hourStr, minuteStr] = time.split(':');
   let hour = parseInt(hourStr, 10);
   const minute = parseInt(minuteStr, 10);
@@ -109,7 +163,7 @@ function buildTriggerDate(time: string, ampm: string): Date {
   const trigger = new Date();
   trigger.setHours(hour, minute, 0, 0);
 
-  // If the time has already passed today, schedule for tomorrow
+  // If time already passed today → schedule for tomorrow
   if (trigger.getTime() <= now.getTime()) {
     trigger.setDate(trigger.getDate() + 1);
   }

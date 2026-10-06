@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet, View, BackHandler } from 'react-native';
+import notifee, { EventType } from '@notifee/react-native';
 
 import { AppProvider, useAppContext } from './src/context/AppContext';
 import { LandingScreen } from './src/screens/LandingScreen';
@@ -13,7 +14,7 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { BottomNavigation, TabName } from './src/components/BottomNavigation';
 import { colors } from './src/theme/theme';
 import { Alarm, CompletedChallenge } from './src/types/types';
-import { setupNotifee } from './src/services/alarmService';
+import { setupNotifee, cancelAlarm, ACTION } from './src/services/alarmService';
 
 // ─── Screen names ─────────────────────────────────────────────────────────────
 type ScreenName =
@@ -24,9 +25,24 @@ type ScreenName =
   | 'ActiveAlarm'
   | 'ChallengeComplete';
 
+// ─── Background event handler (registered at module level) ───────────────────
+// Handles notification action buttons when app is in background/killed
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  const { notification, pressAction } = detail;
+  if (!notification || !pressAction) return;
+
+  const alarmId = notification.data?.alarmId as string | undefined;
+  if (!alarmId) return;
+
+  if (pressAction.id === ACTION.STOP) {
+    await cancelAlarm(alarmId);
+  }
+  // SNOOZE and START_SQUATS are handled in the foreground event (app opens)
+});
+
 // ─── Inner app (needs context) ────────────────────────────────────────────────
 function InnerApp() {
-  const { addCompletedChallenge } = useAppContext();
+  const { alarms, addCompletedChallenge } = useAppContext();
 
   const [screen, setScreen] = useState<ScreenName>('Landing');
   const [tab, setTab] = useState<TabName>('Home');
@@ -36,12 +52,56 @@ function InnerApp() {
   const [activeAlarm, setActiveAlarm] = useState<Alarm | null>(null);
   const [lastChallenge, setLastChallenge] = useState<CompletedChallenge | null>(null);
 
-  // Initialise notifee (permissions + channel) once
+  // ── Initialise notifee + request permissions once ─────────────────────────
   useEffect(() => {
     setupNotifee();
   }, []);
 
-  // ── Back button ──────────────────────────────────────────────────────────────
+  // ── Foreground event handler ──────────────────────────────────────────────
+  // Fires when the app is OPEN and a notification is pressed / action tapped
+  useEffect(() => {
+    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+      const { notification, pressAction } = detail;
+      if (!notification) return;
+
+      const alarmId = notification.data?.alarmId as string | undefined;
+      const alarmMode = notification.data?.alarmMode as string | undefined;
+
+      if (type === EventType.PRESS || pressAction?.id === ACTION.START_SQUATS) {
+        // Challenge alarm tapped → navigate to squat counter
+        if (alarmMode === 'challenge' && alarmId) {
+          const alarm = alarms.find(a => a.id === alarmId);
+          if (alarm) {
+            goActiveAlarm(alarm);
+          }
+        }
+      }
+
+      if (pressAction?.id === ACTION.STOP && alarmId) {
+        cancelAlarm(alarmId);
+      }
+    });
+    return unsubscribe;
+  }, [alarms]);
+
+  // ── Check if app was launched from a notification (killed state) ──────────
+  useEffect(() => {
+    notifee.getInitialNotification().then(initial => {
+      if (!initial) return;
+      const alarmId = initial.notification.data?.alarmId as string | undefined;
+      const alarmMode = initial.notification.data?.alarmMode as string | undefined;
+      if (alarmMode === 'challenge' && alarmId) {
+        const alarm = alarms.find(a => a.id === alarmId);
+        if (alarm) {
+          // Skip landing, go straight to challenge
+          setScreen('ActiveAlarm');
+          setActiveAlarm(alarm);
+        }
+      }
+    });
+  }, [alarms]);
+
+  // ── Back button ──────────────────────────────────────────────────────────
   useEffect(() => {
     const onBack = () => {
       if (screen === 'CreateAlarm' || screen === 'EditAlarm' || screen === 'ChallengeComplete') {
@@ -58,7 +118,7 @@ function InnerApp() {
     return () => sub.remove();
   }, [screen, tab]);
 
-  // ── Navigation helpers ───────────────────────────────────────────────────────
+  // ── Navigation helpers ───────────────────────────────────────────────────
   const goCreateAlarm = () => {
     setEditingAlarm(null);
     setScreen('CreateAlarm');
@@ -74,8 +134,12 @@ function InnerApp() {
     setScreen('ActiveAlarm');
   };
 
-  const handleAlarmComplete = () => {
+  const handleAlarmComplete = async () => {
     if (!activeAlarm) return;
+
+    // Dismiss the notification when squats are done
+    await cancelAlarm(activeAlarm.id);
+
     const challenge: CompletedChallenge = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
@@ -87,7 +151,7 @@ function InnerApp() {
     setScreen('ChallengeComplete');
   };
 
-  // ── Tab rendering ────────────────────────────────────────────────────────────
+  // ── Tab rendering ────────────────────────────────────────────────────────
   const renderTab = () => {
     switch (tab) {
       case 'Home':
@@ -112,7 +176,7 @@ function InnerApp() {
     }
   };
 
-  // ── Screen rendering ─────────────────────────────────────────────────────────
+  // ── Screen rendering ─────────────────────────────────────────────────────
   switch (screen) {
     case 'Landing':
       return <LandingScreen onGetStarted={() => setScreen('Main')} />;
@@ -146,7 +210,7 @@ function InnerApp() {
     case 'ActiveAlarm':
       return (
         <ActiveAlarmScreen
-          targetReps={activeAlarm?.targetReps ?? 10}
+          alarm={activeAlarm!}
           onComplete={handleAlarmComplete}
         />
       );

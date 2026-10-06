@@ -13,6 +13,13 @@ export interface SquatResult {
 // Alarm data model
 export type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
+/**
+ * 'normal'    — Standard alarm: user can Snooze or Stop without any exercise.
+ * 'challenge' — Squat challenge: alarm only stops when the squat target is met.
+ *               App auto-opens ActiveAlarmScreen when the alarm fires.
+ */
+export type AlarmMode = 'normal' | 'challenge';
+
 export interface Alarm {
   id: string;
   time: string;       // "07:00"
@@ -24,6 +31,7 @@ export interface Alarm {
   enabled: boolean;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
+  alarmMode: AlarmMode; // NEW: determines dismiss behaviour
 }
 
 // Challenge completion record
