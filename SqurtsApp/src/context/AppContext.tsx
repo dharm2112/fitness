@@ -34,9 +34,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           AsyncStorage.getItem(CHALLENGES_KEY),
         ]);
         if (alarmsRaw) {
-          // Migration: old alarms may not have alarmMode — default to 'challenge'
+          // Migration: old alarms may not have alarmMode/wakeScreen — apply safe defaults
           const parsed: Alarm[] = JSON.parse(alarmsRaw);
-          setAlarms(parsed.map(a => ({ alarmMode: 'challenge', ...a })));
+          setAlarms(parsed.map(a => ({ alarmMode: 'challenge', wakeScreen: true, ...a })));
         }
         if (challengesRaw) setCompletedChallenges(JSON.parse(challengesRaw));
       } catch (e) {

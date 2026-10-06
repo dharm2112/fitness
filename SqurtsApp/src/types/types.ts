@@ -31,7 +31,13 @@ export interface Alarm {
   enabled: boolean;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
-  alarmMode: AlarmMode; // NEW: determines dismiss behaviour
+  alarmMode: AlarmMode; // 'normal' | 'challenge'
+  /**
+   * Challenge mode only.
+   * true  → phone screen turns on + challenge opens even when phone is locked.
+   * false → notification only; user must manually open app.
+   */
+  wakeScreen: boolean;
 }
 
 // Challenge completion record

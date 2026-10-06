@@ -59,6 +59,8 @@ export async function scheduleAlarm(alarm: Alarm): Promise<string> {
 
   const isChallenge = alarm.alarmMode === 'challenge';
 
+  const shouldWake = isChallenge && alarm.wakeScreen;
+
   const notificationId = await notifee.createTriggerNotification(
     {
       id: alarm.id,
@@ -69,14 +71,19 @@ export async function scheduleAlarm(alarm: Alarm): Promise<string> {
       data: {
         alarmId: alarm.id,
         alarmMode: alarm.alarmMode,
+        wakeScreen: String(alarm.wakeScreen),
         targetReps: String(alarm.targetReps),
       },
       android: {
         channelId: CHANNEL_ID,
         importance: AndroidImportance.HIGH,
-        fullScreenAction: { id: 'default' }, // wakes screen
+        // fullScreenAction wakes the locked screen — only when user opted in
+        ...(shouldWake ? { fullScreenAction: { id: 'default' } } : {}),
         pressAction: { id: 'default', launchActivity: 'default' },
-        ongoing: isChallenge, // Challenge alarm stays until completed
+        // Challenge alarm is ongoing (can't be swiped away) until squats are done
+        ongoing: isChallenge,
+        // Challenge with wake → can't be dismissed from notification shade
+        asForegroundService: false,
         actions: isChallenge
           ? [
               {

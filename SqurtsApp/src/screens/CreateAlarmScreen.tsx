@@ -39,6 +39,7 @@ export const CreateAlarmScreen = ({ existingAlarm, onSave, onBack }: Props) => {
   const [soundEnabled, setSoundEnabled] = useState(existingAlarm?.soundEnabled ?? true);
   const [vibrationEnabled, setVibrationEnabled] = useState(existingAlarm?.vibrationEnabled ?? true);
   const [alarmMode, setAlarmMode] = useState<AlarmMode>(existingAlarm?.alarmMode ?? 'challenge');
+  const [wakeScreen, setWakeScreen] = useState<boolean>(existingAlarm?.wakeScreen ?? true);
 
   const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
@@ -61,6 +62,7 @@ export const CreateAlarmScreen = ({ existingAlarm, onSave, onBack }: Props) => {
       soundEnabled,
       vibrationEnabled,
       alarmMode,
+      wakeScreen: alarmMode === 'challenge' ? wakeScreen : false,
     };
     if (isEdit) {
       await cancelAlarm(alarm.id);
@@ -188,15 +190,33 @@ export const CreateAlarmScreen = ({ existingAlarm, onSave, onBack }: Props) => {
 
         </View>
 
-        {/* Challenge info box */}
+        {/* Challenge info box + wake screen toggle */}
         {alarmMode === 'challenge' && (
-          <View style={styles.challengeInfo}>
-            <Text style={styles.challengeInfoIcon}>⚡</Text>
-            <Text style={styles.challengeInfoText}>
-              When the alarm fires, the app will open directly to the squat counter.
-              Complete <Text style={{ fontWeight: '800' }}>{targetReps} squats</Text> to dismiss it.
-              No snooze allowed!
-            </Text>
+          <View style={styles.challengeInfoBlock}>
+            <View style={styles.challengeInfo}>
+              <Text style={styles.challengeInfoIcon}>⚡</Text>
+              <Text style={styles.challengeInfoText}>
+                When the alarm fires, the app will open directly to the squat counter.
+                Complete <Text style={{ fontWeight: '800' }}>{targetReps} squats</Text> to dismiss it.
+                No snooze allowed!
+              </Text>
+            </View>
+
+            {/* Wake Screen Toggle */}
+            <View style={styles.wakeRow}>
+              <View style={styles.wakeLeft}>
+                <Text style={styles.wakeTitle}>📱 Wake screen when locked</Text>
+                <Text style={styles.wakeDesc}>
+                  {wakeScreen
+                    ? 'Phone turns on automatically & challenge opens.'
+                    : 'Notification only — you must unlock & open manually.'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setWakeScreen(v => !v)}
+                style={[styles.toggle, wakeScreen ? styles.toggleChallenge : styles.toggleOff]}
+              />
+            </View>
           </View>
         )}
 
@@ -307,20 +327,39 @@ const styles = StyleSheet.create({
   modeTagChallenge: { backgroundColor: colors.primaryContainer + '22' },
   modeTagTextChallenge: { color: colors.primaryContainer },
 
-  // Challenge info box
+  // Challenge info
+  challengeInfoBlock: {
+    gap: spacing.sm,
+  },
   challengeInfo: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: colors.primaryContainer + '15',
     borderRadius: rounded.lg,
     padding: spacing.md,
-    marginTop: 12,
     borderWidth: 1,
     borderColor: colors.primaryContainer + '40',
     gap: 10,
   },
   challengeInfoIcon: { fontSize: 20 },
   challengeInfoText: { ...typography.bodySm, color: colors.textMain, flex: 1, lineHeight: 18 },
+
+  // Wake screen row
+  wakeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceContainerLowest,
+    borderRadius: rounded.lg,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    padding: spacing.md,
+    gap: 12,
+  },
+  wakeLeft: { flex: 1 },
+  wakeTitle: { ...typography.labelMd, color: colors.textMain, marginBottom: 2 },
+  wakeDesc: { ...typography.labelSm, color: colors.textMuted, lineHeight: 16 },
+  toggleChallenge: { backgroundColor: colors.primaryContainer },
 
   // Days
   daysContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },

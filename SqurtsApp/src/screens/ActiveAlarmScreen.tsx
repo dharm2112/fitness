@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler } from 'react-native';
 import { checkBackendHealth, getSquatResult, pushAlarmSettings } from '../services/api';
 import { cancelAlarm } from '../services/alarmService';
 import { colors, typography, rounded, spacing } from '../theme/theme';
@@ -23,7 +23,7 @@ export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completedRef = useRef(false);
 
-  // On mount: push alarm settings to backend, start polling
+  // On mount: push alarm settings to backend, start polling, block back button
   useEffect(() => {
     completedRef.current = false;
 
@@ -35,6 +35,19 @@ export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
       setConnectionStatus(healthy ? 'connected' : 'unavailable');
     };
     init();
+
+    // ── Block hardware back button during challenge ────────────────────────
+    let backSub: ReturnType<typeof BackHandler.addEventListener> | null = null;
+    if (isChallenge) {
+      backSub = BackHandler.addEventListener('hardwareBackPress', () => {
+        Alert.alert(
+          '🔒 Challenge Locked',
+          `You cannot exit until you complete ${targetReps} squats!`,
+          [{ text: "Let's Go! 💪", style: 'cancel' }],
+        );
+        return true; // prevents default back action
+      });
+    }
 
     // Poll backend every 500ms for real squat results
     pollRef.current = setInterval(async () => {
@@ -54,6 +67,7 @@ export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      if (backSub) backSub.remove();
     };
   }, []);
 
