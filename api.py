@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Literal, List
@@ -30,6 +30,12 @@ class AlarmSettings(BaseModel):
     target_reps: int
     active_tune: str
     is_active: bool
+
+    @classmethod
+    def validate_reps(cls, value):
+        if value < 1:
+            raise ValueError("Target reps must be at least 1")
+        return value
 
 # In-memory stores
 current_squat_state = None
@@ -94,6 +100,11 @@ def get_squat_state():
 
 @app.post("/alarm/settings")
 def update_settings(settings: AlarmSettings):
+    if settings.target_reps < 1:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Target reps must be at least 1")
+    if not settings.active_tune.endswith(".wav"):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Active tune must be a .wav file")
+        
     global current_settings
     current_settings = settings
     return {"status": "updated", "data": current_settings.model_dump()}
@@ -104,16 +115,36 @@ def get_settings():
 
 @app.get("/alarm/tunes")
 def list_tunes():
-    os.makedirs("tunes", exist_ok=True)
-    return [f for f in os.listdir("tunes") if f.endswith(".wav")]
+    try:
+        os.makedirs("tunes", exist_ok=True)
+        return [f for f in os.listdir("tunes") if f.endswith(".wav")]
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to list tunes: {str(e)}")
 
 @app.post("/alarm/upload")
 def upload_tune(file: UploadFile = File(...)):
-    os.makedirs("tunes", exist_ok=True)
-    filepath = f"tunes/{file.filename}"
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return {"filename": file.filename}
+    if not file.filename.endswith(".wav"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only .wav files are allowed")
+        
+    try:
+        os.makedirs("tunes", exist_ok=True)
+        filepath = f"tunes/{file.filename}"
+        
+        # Check file size (limit to 5MB for safety)
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
+        
+        if file_size > 5 * 1024 * 1024:
+            raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File too large. Maximum size is 5MB.")
+
+        with open(filepath, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return {"filename": file.filename, "size": file_size}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to save file: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

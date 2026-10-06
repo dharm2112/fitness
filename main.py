@@ -7,7 +7,9 @@ import logging
 import winsound
 import threading
 import urllib.request
+import urllib.error
 import json
+import queue
 
 # Use modules for calculation, pose extraction, visibility
 from modules.angle_calculator import calculate_angle
@@ -118,14 +120,24 @@ def poll_settings():
                 data = json.loads(response.read().decode())
                 global current_settings
                 current_settings = data
-        except Exception:
-            pass
+        except urllib.error.URLError as e:
+            log.debug("API unreachable: %s", e)
+        except json.JSONDecodeError as e:
+            log.warning("Invalid JSON from API: %s", e)
+        except Exception as e:
+            log.error("Unexpected error in poll_settings: %s", e)
         time.sleep(2.0)
 
 threading.Thread(target=poll_settings, daemon=True).start()
 
-def send_result_async(res: SquatResult):
-    def _send():
+# Use a single worker thread and queue to prevent thread leaks on slow API
+api_queue = queue.Queue(maxsize=100)
+
+def api_worker():
+    while True:
+        res = api_queue.get()
+        if res is None:
+            break
         try:
             payload = json.dumps({
                 "exercise": res.exercise,
@@ -143,13 +155,26 @@ def send_result_async(res: SquatResult):
             urllib.request.urlopen(req, timeout=1.0)
         except Exception as e:
             log.debug("Failed to send API result: %s", e)
-    
-    threading.Thread(target=_send, daemon=True).start()
+        finally:
+            api_queue.task_done()
+
+threading.Thread(target=api_worker, daemon=True).start()
+
+def send_result_async(res: SquatResult):
+    try:
+        api_queue.put_nowait(res)
+    except queue.Full:
+        log.warning("API queue is full, dropping squat result update")
 
 # Main loop with robust handling and optional downscale for processing
 try:
     while True:
-        success, frame = cap.read()
+        try:
+            success, frame = cap.read()
+        except Exception as e:
+            log.error("Camera read failed: %s", e)
+            break
+            
         if not success or frame is None:
             # For webcam: camera may be warming up - retry briefly
             if args.video:
@@ -167,7 +192,11 @@ try:
             proc_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
 
         rgb_frame = cv2.cvtColor(proc_frame, cv2.COLOR_BGR2RGB)
-        results = pose.process(rgb_frame)
+        try:
+            results = pose.process(rgb_frame)
+        except Exception as e:
+            log.error("Pose processing failed: %s", e)
+            continue
 
         height, width, _ = frame.shape  # use original for drawing
         confidence = None
