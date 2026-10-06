@@ -13,6 +13,7 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { BottomNavigation, TabName } from './src/components/BottomNavigation';
 import { colors } from './src/theme/theme';
 import { Alarm, CompletedChallenge } from './src/types/types';
+import { setupNotifee } from './src/services/alarmService';
 
 // ─── Screen names ─────────────────────────────────────────────────────────────
 type ScreenName =
@@ -34,6 +35,11 @@ function InnerApp() {
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
   const [activeAlarm, setActiveAlarm] = useState<Alarm | null>(null);
   const [lastChallenge, setLastChallenge] = useState<CompletedChallenge | null>(null);
+
+  // Initialise notifee (permissions + channel) once
+  useEffect(() => {
+    setupNotifee();
+  }, []);
 
   // ── Back button ──────────────────────────────────────────────────────────────
   useEffect(() => {

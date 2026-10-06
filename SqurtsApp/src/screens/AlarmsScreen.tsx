@@ -5,6 +5,7 @@ import { Button } from '../components/Button';
 import { useAppContext } from '../context/AppContext';
 import { colors, typography, rounded, spacing } from '../theme/theme';
 import { Alarm } from '../types/types';
+import { scheduleAlarm, cancelAlarm } from '../services/alarmService';
 
 interface Props {
   onCreateAlarm: () => void;
@@ -15,14 +16,25 @@ interface Props {
 export const AlarmsScreen = ({ onCreateAlarm, onEditAlarm, onAlarmTrigger }: Props) => {
   const { alarms, updateAlarm, deleteAlarm } = useAppContext();
 
-  const toggleAlarm = (alarm: Alarm) => {
-    updateAlarm({ ...alarm, enabled: !alarm.enabled });
+  const toggleAlarm = async (alarm: Alarm) => {
+    const updated = { ...alarm, enabled: !alarm.enabled };
+    updateAlarm(updated);
+    if (updated.enabled) {
+      // Re-schedule the alarm when turned back on
+      await scheduleAlarm(updated);
+    } else {
+      // Cancel the OS alarm when toggled off
+      await cancelAlarm(alarm.id);
+    }
   };
 
   const confirmDelete = (id: string) => {
     Alert.alert('Delete Alarm', 'Remove this alarm?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteAlarm(id) },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        await cancelAlarm(id);
+        deleteAlarm(id);
+      }},
     ]);
   };
 

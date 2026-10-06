@@ -7,6 +7,7 @@ import { Button } from '../components/Button';
 import { useAppContext } from '../context/AppContext';
 import { colors, typography, rounded, spacing } from '../theme/theme';
 import { Alarm, DayKey } from '../types/types';
+import { scheduleAlarm, cancelAlarm } from '../services/alarmService';
 
 const ALL_DAYS: DayKey[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_LABELS: Record<DayKey, string> = {
@@ -46,7 +47,7 @@ export const CreateAlarmScreen = ({ existingAlarm, onSave, onBack }: Props) => {
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const alarm: Alarm = {
       id: existingAlarm?.id ?? Date.now().toString(),
       time: timeStr,
@@ -60,10 +61,14 @@ export const CreateAlarmScreen = ({ existingAlarm, onSave, onBack }: Props) => {
       vibrationEnabled,
     };
     if (isEdit) {
+      // Cancel the old trigger before re-scheduling
+      await cancelAlarm(alarm.id);
       updateAlarm(alarm);
     } else {
       addAlarm(alarm);
     }
+    // Schedule the native OS alarm
+    await scheduleAlarm(alarm);
     onSave();
   };
 
