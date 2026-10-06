@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alarm, CompletedChallenge } from '../types/types';
+import { Alarm, CompletedChallenge, UserProfile } from '../types/types';
 
 // ─── Storage Keys ────────────────────────────────────────────────────────────
 const ALARMS_KEY = '@squrts_alarms';
 const CHALLENGES_KEY = '@squrts_challenges';
+const PROFILE_KEY = '@squrts_profile';
 
 // ─── Context Type ─────────────────────────────────────────────────────────────
 interface AppContextValue {
@@ -14,6 +15,8 @@ interface AppContextValue {
   deleteAlarm: (id: string) => void;
   completedChallenges: CompletedChallenge[];
   addCompletedChallenge: (c: CompletedChallenge) => void;
+  userProfile: UserProfile;
+  updateUserProfile: (profile: UserProfile) => void;
   isLoaded: boolean; // true once storage has been read
 }
 
@@ -23,15 +26,21 @@ const AppContext = createContext<AppContextValue | null>(null);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    name: 'Squats Hero',
+    email: 'hero@squrts.app',
+    backendIp: '10.0.2.2',
+  });
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load persisted data on mount
   useEffect(() => {
     const load = async () => {
       try {
-        const [alarmsRaw, challengesRaw] = await Promise.all([
+        const [alarmsRaw, challengesRaw, profileRaw] = await Promise.all([
           AsyncStorage.getItem(ALARMS_KEY),
           AsyncStorage.getItem(CHALLENGES_KEY),
+          AsyncStorage.getItem(PROFILE_KEY),
         ]);
         if (alarmsRaw) {
           // Migration: old alarms may not have alarmMode/wakeScreen — apply safe defaults
@@ -39,6 +48,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           setAlarms(parsed.map(a => ({ alarmMode: 'challenge', wakeScreen: true, ...a })));
         }
         if (challengesRaw) setCompletedChallenges(JSON.parse(challengesRaw));
+        if (profileRaw) setUserProfile(JSON.parse(profileRaw));
       } catch (e) {
         console.warn('[AppContext] Failed to load from storage:', e);
       } finally {
@@ -64,6 +74,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     );
   }, [completedChallenges, isLoaded]);
 
+  // Persist profile whenever it changes (after first load)
+  useEffect(() => {
+    if (!isLoaded) return;
+    AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(userProfile)).catch(e =>
+      console.warn('[AppContext] Failed to persist profile:', e),
+    );
+  }, [userProfile, isLoaded]);
+
   // ─── Alarm Actions ──────────────────────────────────────────────────────────
   const addAlarm = (alarm: Alarm) =>
     setAlarms(prev => [...prev, alarm]);
@@ -87,6 +105,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         deleteAlarm,
         completedChallenges,
         addCompletedChallenge,
+        userProfile,
+        updateUserProfile: setUserProfile,
         isLoaded,
       }}>
       {children}

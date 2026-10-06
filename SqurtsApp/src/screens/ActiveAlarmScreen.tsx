@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler } from 'react-native';
-import { checkBackendHealth, getSquatResult, pushAlarmSettings } from '../services/api';
+import { checkBackendHealth, pushAlarmSettings, buildWsUrl } from '../services/api';
 import { cancelAlarm } from '../services/alarmService';
+import { useAppContext } from '../context/AppContext';
 import { colors, typography, rounded, spacing } from '../theme/theme';
 import { Alarm, SquatResult } from '../types/types';
 
@@ -13,6 +14,9 @@ interface Props {
 type ConnectionStatus = 'checking' | 'connected' | 'unavailable';
 
 export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
+  const { userProfile } = useAppContext();
+  const backendIp = userProfile.backendIp;
+
   const { targetReps, alarmMode, id: alarmId } = alarm;
   const isChallenge = alarmMode === 'challenge';
 
@@ -20,18 +24,18 @@ export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
   const [squatState, setSquatState] = useState<string>('STANDING');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('checking');
   const [validRep, setValidRep] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const completedRef = useRef(false);
 
-  // On mount: push alarm settings to backend, start polling, block back button
+  // On mount: push alarm settings to backend, connect WebSocket, block back button
   useEffect(() => {
     completedRef.current = false;
 
     const init = async () => {
       if (isChallenge) {
-        await pushAlarmSettings(targetReps);
+        await pushAlarmSettings(backendIp, targetReps);
       }
-      const healthy = await checkBackendHealth();
+      const healthy = await checkBackendHealth(backendIp);
       setConnectionStatus(healthy ? 'connected' : 'unavailable');
     };
     init();
@@ -49,24 +53,45 @@ export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
       });
     }
 
-    // Poll backend every 500ms for real squat results
-    pollRef.current = setInterval(async () => {
-      const result: SquatResult | null = await getSquatResult();
-      if (result && !completedRef.current) {
-        setReps(result.reps);
-        setSquatState(result.state);
-        setValidRep(result.valid_rep);
+    // ── Connect to WebSocket for instant real-time squat results ───────────
+    const ws = new WebSocket(`${buildWsUrl(backendIp)}/squat/ws`);
+    wsRef.current = ws;
 
-        if (result.reps >= targetReps) {
-          completedRef.current = true;
-          clearInterval(pollRef.current!);
-          onComplete();
+    ws.onopen = () => {
+      setConnectionStatus('connected');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const result: SquatResult = JSON.parse(event.data);
+        if (!completedRef.current) {
+          setReps(result.reps);
+          setSquatState(result.state);
+          setValidRep(result.valid_rep);
+
+          if (result.reps >= targetReps) {
+            completedRef.current = true;
+            ws.close();
+            onComplete();
+          }
         }
+      } catch (e) {
+        console.warn('WS parse error', e);
       }
-    }, 500);
+    };
+
+    ws.onerror = () => {
+      setConnectionStatus('unavailable');
+    };
+
+    ws.onclose = () => {
+      if (!completedRef.current) {
+        setConnectionStatus('unavailable');
+      }
+    };
 
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      if (wsRef.current) wsRef.current.close();
       if (backSub) backSub.remove();
     };
   }, []);
@@ -177,7 +202,7 @@ export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
         {connectionStatus === 'unavailable' && (
           <TouchableOpacity style={styles.retryBtn} onPress={() => {
             setConnectionStatus('checking');
-            checkBackendHealth().then(ok => setConnectionStatus(ok ? 'connected' : 'unavailable'));
+            checkBackendHealth(backendIp).then(ok => setConnectionStatus(ok ? 'connected' : 'unavailable'));
           }}>
             <Text style={styles.retryText}>Retry Connection</Text>
           </TouchableOpacity>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Literal, List
@@ -36,15 +36,52 @@ current_squat_state = None
 current_squat_timestamp = 0.0
 current_settings = AlarmSettings(target_reps=10, active_tune="alarm.wav", is_active=False)
 
+# ─── WebSockets ───────────────────────────────────────────────────────────────
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast_json(self, message: dict):
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                self.disconnect(connection)
+
+manager = ConnectionManager()
+
+@app.websocket("/squat/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        # Send current state immediately upon connection
+        if current_squat_state:
+            await websocket.send_json(current_squat_state)
+        while True:
+            # Keep connection open, client doesn't need to send anything
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "Squat API is running"}
 
 @app.post("/squat/result")
-def receive_squat_result(result: SquatResultSchema):
+async def receive_squat_result(result: SquatResultSchema):
     global current_squat_state, current_squat_timestamp
     current_squat_timestamp = time.time()
     current_squat_state = {**result.model_dump(), "timestamp": current_squat_timestamp}
+    # Broadcast to all connected app clients instantly
+    await manager.broadcast_json(current_squat_state)
     return {"status": "received", "data": current_squat_state}
 
 @app.get("/squat/state")

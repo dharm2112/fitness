@@ -1,9 +1,8 @@
 import { SquatResult } from '../types/types';
 
 // ─── CONFIGURATION ────────────────────────────────────────────────────────────
-// For Android Emulator use: http://10.0.2.2:8080
-// For physical device use your PC's local IP: http://192.168.x.x:8080
-export const API_BASE_URL = 'http://10.0.2.2:8080';
+export const buildApiUrl = (ip: string) => `http://${ip}:8080`;
+export const buildWsUrl = (ip: string) => `ws://${ip}:8080`;
 
 const DEFAULT_TIMEOUT = 4000; // ms
 
@@ -19,9 +18,9 @@ async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Res
 }
 
 // ─── HEALTH ───────────────────────────────────────────────────────────────────
-export async function checkBackendHealth(): Promise<boolean> {
+export async function checkBackendHealth(backendIp: string): Promise<boolean> {
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/health`);
+    const res = await fetchWithTimeout(`${buildApiUrl(backendIp)}/health`);
     return res.ok;
   } catch {
     return false;
@@ -29,23 +28,12 @@ export async function checkBackendHealth(): Promise<boolean> {
 }
 
 // ─── SQUAT STATE ──────────────────────────────────────────────────────────────
-export async function getSquatResult(): Promise<SquatResult | null> {
-  try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/squat/state`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    // Empty object means no state yet
-    if (!data || !data.exercise) return null;
-    return data as SquatResult;
-  } catch {
-    return null;
-  }
-}
+// Squat state is now received in real-time via WebSocket at WS_BASE_URL + "/squat/ws"
 
 // ─── ALARM SETTINGS ───────────────────────────────────────────────────────────
-export async function pushAlarmSettings(targetReps: number): Promise<void> {
+export async function pushAlarmSettings(backendIp: string, targetReps: number): Promise<void> {
   try {
-    await fetchWithTimeout(`${API_BASE_URL}/alarm/settings`, {
+    await fetchWithTimeout(`${buildApiUrl(backendIp)}/alarm/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

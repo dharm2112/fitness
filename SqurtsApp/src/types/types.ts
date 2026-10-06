@@ -47,3 +47,10 @@ export interface CompletedChallenge {
   reps: number;
   alarmTime: string;
 }
+
+// User Profile & Settings
+export interface UserProfile {
+  name: string;
+  email: string;
+  backendIp: string; // The IP address for the Python AI Backend
+}
