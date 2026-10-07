@@ -14,7 +14,7 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { BottomNavigation, TabName } from './src/components/BottomNavigation';
 import { colors } from './src/theme/theme';
 import { Alarm, CompletedChallenge } from './src/types/types';
-import { setupNotifee, cancelAlarm, ACTION } from './src/services/alarmService';
+import { setupNotifee, cancelAlarm, snoozeAlarm, ACTION } from './src/services/alarmService';
 
 // ─── Screen names ─────────────────────────────────────────────────────────────
 type ScreenName =
@@ -35,10 +35,12 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   if (!alarmId) return;
 
   if (pressAction.id === ACTION.STOP) {
-    await cancelAlarm(alarmId);
+    if (notification.id) await notifee.cancelNotification(notification.id);
   }
-  // SNOOZE and START_SQUATS are handled in the foreground event (app opens)
-});
+  if (pressAction.id === ACTION.SNOOZE) {
+    const targetReps = notification.data?.targetReps as string || '10';
+    if (notification.id) await snoozeAlarm(notification.id, alarmId, targetReps);
+  }
 
 // ─── Inner app (needs context) ────────────────────────────────────────────────
 function InnerApp() {
@@ -77,8 +79,13 @@ function InnerApp() {
         }
       }
 
-      if (pressAction?.id === ACTION.STOP && alarmId) {
-        cancelAlarm(alarmId);
+      if (pressAction?.id === ACTION.STOP && notification.id) {
+        notifee.cancelNotification(notification.id);
+      }
+      
+      if (pressAction?.id === ACTION.SNOOZE && alarmId && notification.id) {
+        const targetReps = notification.data?.targetReps as string || '10';
+        snoozeAlarm(notification.id, alarmId, targetReps);
       }
     });
     return unsubscribe;
@@ -137,8 +144,9 @@ function InnerApp() {
   const handleAlarmComplete = async () => {
     if (!activeAlarm) return;
 
-    // Dismiss the notification when squats are done
-    await cancelAlarm(activeAlarm.id);
+    // Note: Do NOT call cancelAlarm here if it's a repeating alarm, 
+    // but we can dismiss all current notifications for safety.
+    await notifee.cancelAllNotifications();
 
     const challenge: CompletedChallenge = {
       id: Date.now().toString(),

@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler, Linking } from 'react-native';
+import { Camera, useCameraDevice, useCameraPermission, useFrameProcessor } from 'react-native-vision-camera';
+import { useRunOnJS } from 'react-native-worklets-core';
+import { nitroPoseExercises } from 'react-native-nitro-pose-exercises';
 import { checkBackendHealth, pushAlarmSettings, buildWsUrl } from '../services/api';
 import { cancelAlarm } from '../services/alarmService';
 import { useAppContext } from '../context/AppContext';
@@ -27,8 +30,33 @@ export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
   const wsRef = useRef<WebSocket | null>(null);
   const completedRef = useRef(false);
 
-  // On mount: push alarm settings to backend, connect WebSocket, block back button
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('front');
+
+  const [debugLandmarks, setDebugLandmarks] = useState(0);
+  const setDebugLandmarksJS = useRunOnJS((count: number) => {
+    setDebugLandmarks(count);
+  }, []);
+
+  const frameProcessor = useFrameProcessor((frame) => {
+    'worklet';
+    try {
+      nitroPoseExercises.processFrame(frame);
+      const pts = nitroPoseExercises.landmarks.length;
+      if (pts > 0) {
+        setDebugLandmarksJS(pts);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // On mount: request camera, push alarm settings to backend, connect WebSocket, block back button
   useEffect(() => {
+    if (!hasPermission) {
+      requestPermission();
+    }
+    
     completedRef.current = false;
 
     const init = async () => {
@@ -90,9 +118,21 @@ export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
       }
     };
 
+    const initPose = async () => {
+      try {
+        await nitroPoseExercises.initialize('');
+      } catch (e) {
+        console.warn('Pose init error', e);
+      }
+    };
+    initPose();
+
     return () => {
       if (wsRef.current) wsRef.current.close();
       if (backSub) backSub.remove();
+      try {
+        nitroPoseExercises.release();
+      } catch (e) {}
     };
   }, []);
 
@@ -157,8 +197,28 @@ export const ActiveAlarmScreen = ({ alarm, onComplete }: Props) => {
 
       {/* Camera / state frame */}
       <View style={[styles.cameraFrame, isChallenge && styles.cameraFrameChallenge]}>
+        {!hasPermission ? (
+          <View style={styles.cameraError}>
+            <Text style={styles.cameraErrorText}>Camera permission is required for the challenge.</Text>
+            <TouchableOpacity onPress={() => Linking.openSettings()} style={styles.settingsBtn}>
+              <Text style={styles.settingsBtnText}>Open Settings</Text>
+            </TouchableOpacity>
+          </View>
+        ) : !device ? (
+          <View style={styles.cameraError}>
+            <Text style={styles.cameraErrorText}>No front camera found.</Text>
+          </View>
+        ) : (
+          <Camera
+            style={StyleSheet.absoluteFill}
+            device={device}
+            isActive={true}
+            frameProcessor={frameProcessor}
+          />
+        )}
+
         <View style={styles.trackingBadge}>
-          <Text style={styles.trackingText}>CAMERA TRACKING</Text>
+          <Text style={styles.trackingText}>CAMERA TRACKING {debugLandmarks > 0 ? `(Pose: ${debugLandmarks} pts)` : ''}</Text>
         </View>
 
         <View style={styles.stateCenter}>
@@ -248,6 +308,10 @@ const styles = StyleSheet.create({
 
   cameraFrame: { flex: 1, backgroundColor: colors.surfaceContainer, borderRadius: rounded.xl, marginVertical: spacing.md, borderWidth: 1, borderColor: colors.outlineVariant, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
   cameraFrameChallenge: { borderColor: colors.primaryContainer, borderWidth: 2 },
+  cameraError: { alignItems: 'center', padding: spacing.md },
+  cameraErrorText: { ...typography.bodyMd, color: colors.error, textAlign: 'center', marginBottom: 12 },
+  settingsBtn: { backgroundColor: colors.surfaceVariant, paddingHorizontal: 16, paddingVertical: 8, borderRadius: rounded.md },
+  settingsBtnText: { ...typography.labelMd, color: colors.textMain },
   trackingBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: colors.inverseSurface, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   trackingText: { fontSize: 10, color: '#fff', fontWeight: '700' },
   stateCenter: { alignItems: 'center' },

@@ -14,6 +14,7 @@ import notifee, {
   AuthorizationStatus,
   TimestampTrigger,
   TriggerType,
+  RepeatFrequency,
 } from '@notifee/react-native';
 import { Alarm } from '../types/types';
 
@@ -49,73 +50,79 @@ export async function setupNotifee(): Promise<void> {
 
 // ─── Schedule an alarm ────────────────────────────────────────────────────────
 export async function scheduleAlarm(alarm: Alarm): Promise<string> {
-  const triggerDate = buildTriggerDate(alarm.time, alarm.ampm);
-
-  const trigger: TimestampTrigger = {
-    type: TriggerType.TIMESTAMP,
-    timestamp: triggerDate.getTime(),
-    alarmManager: { allowWhileIdle: true },
-  };
-
   const isChallenge = alarm.alarmMode === 'challenge';
-
   const shouldWake = isChallenge && alarm.wakeScreen;
 
-  const notificationId = await notifee.createTriggerNotification(
-    {
-      id: alarm.id,
-      title: isChallenge ? '💪 Squrts Challenge!' : '🔔 Squrts Alarm',
-      body: isChallenge
-        ? `Wake up! Complete ${alarm.targetReps} squats to silence this alarm.`
-        : `Your alarm is ringing. Tap to open or snooze.`,
-      data: {
-        alarmId: alarm.id,
-        alarmMode: alarm.alarmMode,
-        wakeScreen: String(alarm.wakeScreen),
-        targetReps: String(alarm.targetReps),
-      },
-      android: {
-        channelId: CHANNEL_ID,
-        importance: AndroidImportance.HIGH,
-        // fullScreenAction wakes the locked screen — only when user opted in
-        ...(shouldWake ? { fullScreenAction: { id: 'default' } } : {}),
-        pressAction: { id: 'default', launchActivity: 'default' },
-        // Challenge alarm is ongoing (can't be swiped away) until squats are done
-        ongoing: isChallenge,
-        // Challenge with wake → can't be dismissed from notification shade
-        asForegroundService: false,
-        actions: isChallenge
-          ? [
-              {
-                title: '🏋️ Start Squats',
-                pressAction: { id: ACTION.START_SQUATS, launchActivity: 'default' },
-              },
-            ]
-          : [
-              {
-                title: '⏰ Snooze 5 min',
-                pressAction: { id: ACTION.SNOOZE },
-              },
-              {
-                title: '✕ Stop',
-                pressAction: { id: ACTION.STOP },
-              },
-            ],
-        vibrationPattern: [300, 500, 300, 500],
-      },
-    },
-    trigger,
-  );
+  const createTriggerForDate = async (triggerDate: Date, idSuffix: string, repeat: boolean) => {
+    const trigger: TimestampTrigger = {
+      type: TriggerType.TIMESTAMP,
+      timestamp: triggerDate.getTime(),
+      alarmManager: { allowWhileIdle: true },
+      ...(repeat ? { repeatFrequency: RepeatFrequency.WEEKLY } : {}),
+    };
 
-  console.log(
-    `[alarmService] Scheduled ${alarm.alarmMode} alarm "${alarm.id}" → ${triggerDate.toLocaleString()}`,
-  );
-  return notificationId;
+    return await notifee.createTriggerNotification(
+      {
+        id: `${alarm.id}${idSuffix}`,
+        title: isChallenge ? '💪 Squrts Challenge!' : '🔔 Squrts Alarm',
+        body: isChallenge
+          ? `Wake up! Complete ${alarm.targetReps} squats to silence this alarm.`
+          : `Your alarm is ringing. Tap to open or snooze.`,
+        data: {
+          alarmId: alarm.id,
+          alarmMode: alarm.alarmMode,
+          wakeScreen: String(alarm.wakeScreen),
+          targetReps: String(alarm.targetReps),
+        },
+        android: {
+          channelId: CHANNEL_ID,
+          importance: AndroidImportance.HIGH,
+          ...(shouldWake ? { fullScreenAction: { id: 'default' } } : {}),
+          pressAction: { id: 'default', launchActivity: 'default' },
+          ongoing: isChallenge,
+          asForegroundService: false,
+          actions: isChallenge
+            ? [
+                {
+                  title: '🏋️ Start Squats',
+                  pressAction: { id: ACTION.START_SQUATS, launchActivity: 'default' },
+                },
+              ]
+            : [
+                {
+                  title: '⏰ Snooze 5 min',
+                  pressAction: { id: ACTION.SNOOZE },
+                },
+                {
+                  title: '✕ Stop',
+                  pressAction: { id: ACTION.STOP },
+                },
+              ],
+          vibrationPattern: [300, 500, 300, 500],
+        },
+      },
+      trigger,
+    );
+  };
+
+  if (!alarm.repeatDays || alarm.repeatDays.length === 0) {
+    const triggerDate = buildTriggerDate(alarm.time, alarm.ampm);
+    await createTriggerForDate(triggerDate, '', false);
+    console.log(`[alarmService] Scheduled ${alarm.alarmMode} alarm "${alarm.id}" → ${triggerDate.toLocaleString()}`);
+  } else {
+    for (const day of alarm.repeatDays) {
+      const triggerDate = buildNextDayTrigger(alarm.time, alarm.ampm, day);
+      await createTriggerForDate(triggerDate, `-${day}`, true);
+      console.log(`[alarmService] Scheduled repeating ${alarm.alarmMode} alarm "${alarm.id}-${day}" → ${triggerDate.toLocaleString()}`);
+    }
+  }
+
+  return alarm.id;
 }
 
 // ─── Snooze a normal alarm ────────────────────────────────────────────────────
-export async function snoozeAlarm(alarm: Alarm): Promise<void> {
-  await notifee.cancelNotification(alarm.id);
+export async function snoozeAlarm(notificationId: string, alarmId: string, targetReps: string): Promise<void> {
+  await notifee.cancelNotification(notificationId);
   const snoozeDate = new Date(Date.now() + SNOOZE_MINUTES * 60 * 1000);
   const trigger: TimestampTrigger = {
     type: TriggerType.TIMESTAMP,
@@ -124,10 +131,10 @@ export async function snoozeAlarm(alarm: Alarm): Promise<void> {
   };
   await notifee.createTriggerNotification(
     {
-      id: `${alarm.id}_snooze`,
+      id: `${alarmId}_snooze_${Date.now()}`,
       title: '🔔 Squrts Alarm (Snoozed)',
       body: `Snoozed for ${SNOOZE_MINUTES} minutes.`,
-      data: { alarmId: alarm.id, alarmMode: 'normal', targetReps: String(alarm.targetReps) },
+      data: { alarmId, alarmMode: 'normal', targetReps },
       android: {
         channelId: CHANNEL_ID,
         importance: AndroidImportance.HIGH,
@@ -140,15 +147,20 @@ export async function snoozeAlarm(alarm: Alarm): Promise<void> {
     },
     trigger,
   );
-  console.log(`[alarmService] Snoozed alarm "${alarm.id}" for ${SNOOZE_MINUTES} min`);
+  console.log(`[alarmService] Snoozed alarm "${alarmId}" for ${SNOOZE_MINUTES} min`);
 }
 
 // ─── Cancel a specific alarm ──────────────────────────────────────────────────
 export async function cancelAlarm(alarmId: string): Promise<void> {
   await notifee.cancelTriggerNotification(alarmId);
-  await notifee.cancelNotification(alarmId);            // also dismiss if already showing
-  await notifee.cancelNotification(`${alarmId}_snooze`); // cancel any snooze too
-  console.log(`[alarmService] Cancelled alarm "${alarmId}"`);
+  await notifee.cancelNotification(alarmId);
+  
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  for (const day of days) {
+    await notifee.cancelTriggerNotification(`${alarmId}-${day}`);
+    await notifee.cancelNotification(`${alarmId}-${day}`);
+  }
+  console.log(`[alarmService] Cancelled alarm "${alarmId}" (and any day variants)`);
 }
 
 // ─── Cancel ALL alarms ────────────────────────────────────────────────────────
@@ -170,10 +182,38 @@ function buildTriggerDate(time: string, ampm: string): Date {
   const trigger = new Date();
   trigger.setHours(hour, minute, 0, 0);
 
-  // If time already passed today → schedule for tomorrow
   if (trigger.getTime() <= now.getTime()) {
     trigger.setDate(trigger.getDate() + 1);
   }
 
+  return trigger;
+}
+
+function buildNextDayTrigger(time: string, ampm: string, targetDayName: string): Date {
+  const [hourStr, minuteStr] = time.split(':');
+  let hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+
+  const trigger = new Date();
+  trigger.setHours(hour, minute, 0, 0);
+
+  const jsDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const targetDayIdx = jsDays.indexOf(targetDayName);
+  const now = new Date();
+  
+  for (let i = 0; i <= 7; i++) {
+    const candidate = new Date(trigger.getTime());
+    candidate.setDate(candidate.getDate() + i);
+    
+    if (candidate.getDay() === targetDayIdx) {
+      if (i === 0 && candidate.getTime() <= now.getTime()) {
+         candidate.setDate(candidate.getDate() + 7);
+      }
+      return candidate;
+    }
+  }
   return trigger;
 }

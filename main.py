@@ -268,6 +268,7 @@ try:
 
                     # Fire off an API request if state or rep changed
                     if result is not None:
+                        result.completed = (counter >= current_settings.get("target_reps", 10))
                         if result.state != last_api_state or result.reps != last_api_reps or result.valid_rep:
                             send_result_async(result)
                             last_api_state = result.state
@@ -346,6 +347,12 @@ try:
             if counter >= target_reps:
                 # Also auto-update the API so the phone knows we finished
                 current_settings["is_active"] = False
+                try:
+                    payload = json.dumps(current_settings).encode('utf-8')
+                    req = urllib.request.Request("http://localhost:8080/alarm/settings", data=payload, headers={'Content-Type': 'application/json'})
+                    urllib.request.urlopen(req, timeout=1.0)
+                except Exception as e:
+                    log.debug("Failed to update API alarm settings: %s", e)
                 cv2.waitKey(2000)
                 log.info("%d squats completed! Shutting down.", target_reps)
                 break
