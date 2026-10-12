@@ -107,7 +107,17 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy {
+        force "androidx.work:work-runtime:2.8.0"
+        force "androidx.work:work-runtime-ktx:2.8.0"
+    }
+}
+
 dependencies {
+    // Force consistent androidx.work version across all native modules (notifee, etc.)
+    implementation("androidx.work:work-runtime-ktx:2.8.0")
+
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
@@ -117,3 +127,4 @@ dependencies {
         implementation jscFlavor
     }
 }
+

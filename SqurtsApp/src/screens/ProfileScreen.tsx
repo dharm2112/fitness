@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 48, fontWeight: '800', color: colors.onPrimary },
   nameLabel: { ...typography.headlineSm, color: colors.textMain },
   
-  sectionTitle: { ...typography.titleMd, color: colors.secondary, marginTop: spacing.lg, marginBottom: spacing.sm, fontWeight: '700' },
+  sectionTitle: { ...typography.labelLg, color: colors.secondary, marginTop: spacing.lg, marginBottom: spacing.sm, fontWeight: '700' },
   
   inputLabel: { ...typography.labelMd, color: colors.textMain, marginBottom: 8 },
   input: {

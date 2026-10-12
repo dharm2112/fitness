@@ -41,6 +41,7 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
     const targetReps = notification.data?.targetReps as string || '10';
     if (notification.id) await snoozeAlarm(notification.id, alarmId, targetReps);
   }
+});
 
 // ─── Inner app (needs context) ────────────────────────────────────────────────
 function InnerApp() {

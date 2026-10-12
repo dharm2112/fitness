@@ -45,7 +45,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         if (alarmsRaw) {
           // Migration: old alarms may not have alarmMode/wakeScreen — apply safe defaults
           const parsed: Alarm[] = JSON.parse(alarmsRaw);
-          setAlarms(parsed.map(a => ({ alarmMode: 'challenge', wakeScreen: true, ...a })));
+          setAlarms(parsed.map(a => ({ ...a, alarmMode: a.alarmMode || 'challenge', wakeScreen: a.wakeScreen ?? true })));
         }
         if (challengesRaw) setCompletedChallenges(JSON.parse(challengesRaw));
         if (profileRaw) setUserProfile(JSON.parse(profileRaw));
